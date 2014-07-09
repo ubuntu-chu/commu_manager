@@ -60,6 +60,9 @@ include/generated
 arch/arm/include/generated/
 
 objs/
+boost/
+manager/
+reactor/
 
 # stgit generated dirs
 patches-*

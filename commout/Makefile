@@ -24,27 +24,27 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= reactor_base  
+PROGRAM_NAME	= commout  
 #cross compile tools defined 
 #CROSS_COMPILE ?= arm-none-linux-gnueabi-
 CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
-#BUILD_TYPE		= TYPE_EXEC
+BUILD_TYPE		= TYPE_EXEC
 #BUILD_TYPE		= TYPE_STATIC
-BUILD_TYPE 	= TYPE_DYNAMIC
+#BUILD_TYPE 	= TYPE_DYNAMIC
 
 #global directory defined
 TOPDIR       	= $(shell pwd)
 #SRCDIR	 		= $(TOPDIR)/src
 SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
-LIBDIR      	= lib/
+LIBDIR      	= ../manager/libs
 #所引用库设置
-LDFLAGS    		= 
+LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../../
+INCLUDEDIR   	= ../reactor ../boost ../
 #make install INSTALL_PATH   
 #INSTALL_PATH变量可由make传递进来的参数改写
 #安装路径设置
