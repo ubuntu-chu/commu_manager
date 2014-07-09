@@ -16,9 +16,11 @@
 *.O
 *.O.*
 *.a
+*.d
 *.s
 *.ko
 *.so
+*.so.*
 *.so.dbg
 *.mod.c
 *.i
@@ -56,6 +58,8 @@ include/linux/utsrelease.h
 include/linux/bounds.h
 include/generated
 arch/arm/include/generated/
+
+objs/
 
 # stgit generated dirs
 patches-*
