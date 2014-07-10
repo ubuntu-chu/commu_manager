@@ -2,7 +2,7 @@
 #include <muduo/net/EventLoop.h>
 #include <boost/bind.hpp>
 #include <muduo/net/TcpServer.h>
-#include <includes/config.h>
+#include "parse.h"
 
 // using namespace muduo;
 // using namespace muduo::net;
@@ -65,8 +65,13 @@ int main(int argc, char**argv)
 	config_file_path 	= argv[1];
 #endif
 	if (argc != 2){
-	  LOG_SYSFATAL << "argc must = 2" << getpid();
+		LOG_SYSFATAL << "argc must = 2" << getpid();
 	}
+	LOG_INFO << "project xml config file parse";
+	if (xml_parse(config_file_path)){
+		LOG_SYSFATAL << "project xml config file parse failed!";
+	}
+
 	LOG_INFO << "pid = " << getpid();
 	muduo::net::EventLoop loop;
 	muduo::net::InetAddress listenAddr(2007);
