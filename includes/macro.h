@@ -121,30 +121,6 @@
 #define   		 BIT31 						   					(1UL << 31)
 #endif
 
-#ifdef LOGGER
-#define ASSERT(EX)                                                         \
-if (!(EX))                                                                 \
-{                                                                          \
-    volatile char dummy = 0;                                              \
-	LOG_FATAL << "(%s) assert failed !" << #EX;							   \
-    while (dummy == 0);                                                   \
-}
-#else
-
-#define ASSERT(EX)                                                         \
-if (!(EX))                                                                 \
-{                                                                          \
-    volatile char dummy = 0;                                              \
-    while (dummy == 0);                                                    \
-}
-#endif
-
-
-#include <stdarg.h>
-#define SECTION(x)                      __attribute__((section(x)))
-#define UNUSED                          __attribute__((unused))
-#define USED                            __attribute__((used))
-#define ALIGN(n)                        __attribute__((aligned(n)))
 
 
 
