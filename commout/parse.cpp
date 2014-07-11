@@ -1,11 +1,7 @@
 #include "parse.h"
-#include <tinyxml/tinyxml.h>
-#include <string>
-#include <vector>
-#include <map>
+#include "datum.h"
 
 using std::string;
-class shmem		t_shmem;
 
 bool xml_load(TiXmlDocument&doc, const char *path)
 {
@@ -16,7 +12,7 @@ bool xml_load(TiXmlDocument&doc, const char *path)
         return false;
     }
     //print
-    doc.Print();
+//    doc.Print();
     return true;
 }
 
@@ -331,7 +327,7 @@ bool xml_AddNode_Attribute(TiXmlElement *pRootEle, std::string strParNodeName,
 int xml_parse(const char *path)
 {
 #if 1
-	void	        *pshmem_addr 	    = reinterpret_cast<void *>(t_shmem.attach());
+	void	        *pshmem_addr 	    = reinterpret_cast<void *>(t_project_datum.shmem_.attach());
 	project_config	t_project_config;
 	process_config 	&process_conf	    = t_project_config.process_config_get();
 	protocol_config &protocol_conf	    = t_project_config.protocol_config_get();
@@ -344,9 +340,9 @@ int xml_parse(const char *path)
 	io_config       &io_conf	        = pproject_config->io_config_get();
 	device_config   &device_conf	    = pproject_config->device_config_get();
 #endif
-	string          strNodeName;
-	string          strAttrName;
-	string          value;
+	std::string          strNodeName;
+	std::string          strAttrName;
+	std::string          value;
 
 	TiXmlDocument doc;
 	TiXmlElement *pNode                 = NULL;
@@ -471,8 +467,16 @@ int xml_parse(const char *path)
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->stop_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_PARITY_STRING , pAttr->Name())){
+                int parity;
+                if (0 == strcmp("none" , pAttr->Value())){
+                    parity                          = 2;
+                }else if (0 == strcmp("odd" , pAttr->Value())){
+                    parity                          = 1;
+                }else if (0 == strcmp("even" , pAttr->Value())){
+                    parity                          = 0;
+                }
                 reinterpret_cast<io_com_node *>(pio_node)
-                        ->parity_set(atoi(pAttr->Value()));
+                        ->parity_set(parity);
             }else if (0 == strcmp(def_SEND_INTERVAL_STRING , pAttr->Name())){
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->send_interval_set(atoi(pAttr->Value()));
@@ -490,7 +494,7 @@ int xml_parse(const char *path)
                         ->sensor_addr_set(pAttr->Value());
             }
         }
-        io_conf.io_add(type, pio_node);
+        io_conf.io_vector_no_inc(type);
     }
 
 	//解析device配置信息
@@ -525,6 +529,12 @@ int xml_parse(const char *path)
         }
         device_conf.device_add(t_device_node);
     }
+
+    //将工程配置信息写入到共享内存中
+    LOG_INFO << "size = " << sizeof(t_project_config);
+	//*reinterpret_cast<project_config *>(pshmem_addr) 	    = t_project_config;
+    memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
+    t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);
 
 	return 0;
 }

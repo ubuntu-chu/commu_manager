@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <string.h>
+#include <endian.h>
+#include <stdlib.h>
 
 using std::string;
 using std::vector;
@@ -12,7 +14,7 @@ using std::vector;
 //进程间共享内存定义
 #define 	def_FTOK_PATH 			("/etc/profile")
 #define 	def_FTOK_PROJ_ID 		(0x20)
-#define 	def_SHMEM_SIZE			(4096)
+#define 	def_SHMEM_SIZE			(20*1024)
 
 #define    def_NAME_STRING         ("name")
 #define    def_DESCRIBE_STRING     ("describe")
@@ -204,7 +206,7 @@ private:
 	char   			map_[def_NAME_MAX_LEN];//映射资源
 };
 
-class io_tcp_server_node:io_node{
+class io_tcp_server_node:public io_node{
 public:
 	io_tcp_server_node(){}
 	~io_tcp_server_node(){}
@@ -238,7 +240,7 @@ public:
 };
 
 
-class io_com_node:io_node{
+class io_com_node:public io_node{
 public:
 	io_com_node(){}
 	~io_com_node(){}
@@ -308,21 +310,18 @@ private:
 #define    C2N(c)                              ((c) - '0')
 #define    N2C(n)                              ((n) + '0')
 
-class io_com_ext_node:io_com_node{
+class io_com_ext_node:public io_com_node{
 public:
 	io_com_ext_node(){}
 	~io_com_ext_node(){}
 
     int device_addr_set(const char *device_addr)
     {
-        int     i = 0;
+        int     value;
 
-        if (strlen(device_addr) > sizeof(device_addr_)){
-            return -1;
-        }
-        for (; *device_addr != '\0'; device_addr++){
-            device_addr_[i]          = C2N(*device_addr);
-        }
+        value   = strtoul(device_addr, NULL, 16);
+        value   = htobe32(value);
+        memcpy(device_addr_, &value, sizeof(device_addr_));
 
         return 0;
     }
@@ -334,14 +333,11 @@ public:
 
     int sensor_addr_set(const char *sensor_addr)
     {
-        int     i = 0;
+        int     value;
 
-        if (strlen(sensor_addr) > sizeof(sensor_addr_)){
-            return -1;
-        }
-        for (; *sensor_addr != '\0'; sensor_addr++){
-            sensor_addr_[i]          = C2N(*sensor_addr);
-        }
+        value   = strtoul(sensor_addr, NULL, 16);
+        value   = htobe32(value);
+        memcpy(sensor_addr_, &value, sizeof(sensor_addr_));
 
         return 0;
     }
@@ -449,6 +445,9 @@ public:
 
         return i;
     }
+
+    int io_type_start(void){return IO_TYPE_BEGIN;}
+    int io_type_end(void){return IO_TYPE_END;}
 private:
     char   			    describe_[def_DESCRIBE_MAX_LEN];
 	unsigned char       index_[IO_TYPE_END];

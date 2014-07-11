@@ -1,8 +1,8 @@
 #ifndef    _PARSE_H
 #define    _PARSE_H
 
-#include <includes/config.h>
-#include <includes/shmem.h>
+#include <includes/includes.h>
+
 
 
 

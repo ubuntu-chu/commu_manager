@@ -1,10 +1,9 @@
 #ifndef _INCLUEDES_H_
 #define _INCLUEDES_H_
 
-#include    "includes-low.h"
-
-#define		__LINUX_OS__
-#ifdef	__LINUX_OS__
+//#include    "includes-low.h"
+#include "config.h"
+#include "shmem.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,11 +12,25 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
-#else
+#include <signal.h>
 
+#include <muduo/base/Logging.h>
+#include <muduo/net/EventLoop.h>
+#include <muduo/net/InetAddress.h>
+#include <muduo/net/TcpClient.h>
+#include <muduo/net/TcpServer.h>
+#include <muduo/base/LogFile.h>
+#include <muduo/base/ProcessInfo.h>
 
-#endif
+#include <boost/bind.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
 
+#include <tinyxml/tinyxml.h>
+
+#include <string>
+#include <vector>
+#include <map>
 
 
 #endif

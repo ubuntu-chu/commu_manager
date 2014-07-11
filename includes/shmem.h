@@ -20,9 +20,11 @@ public:
 		if ((id_ = shmget(key, def_SHMEM_SIZE, 0666|IPC_CREAT)) == (int)(-1)){
 			LOG_SYSFATAL << "Failed to obtain shared memory ID";
 		}
+        LOG_INFO << "shmget succ, size = " << def_SHMEM_SIZE;
 	}
 	~shmem()
 	{
+        LOG_INFO << "rm shm id = " <<id_;
 		if (id_ != (int)(-1)){
 			shmctl(id_, IPC_RMID, NULL);
 		}
@@ -30,21 +32,20 @@ public:
 
 	void *attach(void)
 	{
-		void *mem_addr;
-
-		if ((mem_addr = (void *)shmat(id_, NULL, 0) ) == (void *)(-1)){
+		if ((mem_addr_ = (void *)shmat(id_, NULL, 0) ) == (void *)(-1)){
 			LOG_SYSFATAL << "Failed to attach shared memory ID";
 		}
-		return mem_addr;
+		return mem_addr_;
 	}
 
-	void detach(void *paddr)
+	void detach(void)
 	{
-		shmdt(paddr);
+		shmdt(mem_addr_);
 	}
 
 private:
 	int 						id_;
+    void                        *mem_addr_;
 };
 
 
