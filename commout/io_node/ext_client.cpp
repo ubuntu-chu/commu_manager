@@ -25,8 +25,12 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
             << conn->peerAddress().toIpPort() << " is "
             << (conn->connected() ? "UP" : "DOWN");
 
-    if (!conn->connected())
-        loop_->quit();
+    MutexLockGuard lock(mutex_);
+    if (conn->connected()) {
+        connection_ = conn;
+    } else {
+        connection_.reset();
+    }
 }
 
 void ext_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,

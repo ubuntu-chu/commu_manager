@@ -8,6 +8,29 @@
 using namespace muduo;
 using namespace muduo::net;
 
+enum{
+    COMM_ERROR          =   -1,
+    COMM_OK             =   0,
+
+    //正常信息
+    COMM_INIT           =   100,        //通道初始化（非连接通道，或服务端）
+    COMM_REINIT         =   101,        //通道重新初始化（非连接通道，或服务端）
+
+    COMM_CLOSE          =   103,        //通道关闭
+
+    COMM_CONNECT        =   105,        //通道连接成功（面向连接）
+    COMM_DISCONNECT     =   106,        //通道断开（面向连接）
+    COMM_ACCEPT         =   107,        //接收新的客户端（面向连接）
+    COMM_WAITCONNECT    =   108,        //等待客户端连接
+    COMM_DISACCEPT      =   109,        //不接收新的客户端（面向连接）
+
+    //错误信息
+    COMM_NOACTIVECH     =   1000,       //没有处于工作状态的通道
+    COMM_NOTINIT        =   1001,       //通道未初始化
+
+    COMM_INVALIDPTR     =   2000,       //无效的指针
+};
+
 class channel_runinfo{
 public:
     bool            m_bStatus;             //通信是否正常

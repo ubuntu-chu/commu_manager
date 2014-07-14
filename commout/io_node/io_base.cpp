@@ -3,25 +3,28 @@
 //初始化通信介质
 bool io_base::init(void)
 {
-
+    LOG_DEBUG;
     return true;
 }
 
 //反初始化
 bool io_base::uninit()
 {
+    LOG_DEBUG;
     return true;
 }
 
 //连接通信介质
 bool io_base::connect(bool brelink)
 {
+    LOG_DEBUG;
     return true;
 }
 
 //断开通信介质，
 bool io_base::disconnect(void)
 {
+    LOG_DEBUG;
     return true;
 }
 

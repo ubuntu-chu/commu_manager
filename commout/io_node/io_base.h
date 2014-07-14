@@ -9,7 +9,7 @@ class channel;
 //通信基类
 class io_base{
 public:
-    io_base(const io_node *pio_node = NULL):pio_node_(pio_node){}
+    io_base(const io_node *pio_node):pio_node_(pio_node){}
     virtual ~io_base(){}
 
     //初始化通信介质
@@ -31,7 +31,7 @@ public:
     virtual bool disconnect(void);
 
     //报文拆帧后发送
-    virtual int send_package(char *pdata, size_t len);
+    int send_package(char *pdata, size_t len);
 
     //向通道写报文
     virtual int send_data(char *pdata, size_t len);

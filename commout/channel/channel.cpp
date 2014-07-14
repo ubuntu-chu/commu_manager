@@ -6,24 +6,34 @@
 //初始化通信介质
 bool channel::init(void)
 {
+    runinfo_.m_bStatus          = true;
+	if (NULL == io_base_){
+	    return false;
+	}
 
-	LOG_DEBUG;
-
-	return true;
+	return io_base_->init();
 }
 
 //反初始化
 bool channel::uninit(void)
 {
-	LOG_DEBUG;
-	return true;
+	if (NULL == io_base_){
+	    return false;
+	}
+
+	return io_base_->uninit();
 }
 
 //向通信介质写报文
 int channel::write(const char *pdata, size_t len)
 {
-	LOG_DEBUG;
-	return 0;
+    if(io_base_ == NULL || runinfo_.m_bStatus == false)
+        return COMM_NOTINIT;
+
+    if(pdata == NULL)
+        return COMM_INVALIDPTR;
+
+    return io_base_->send_package(const_cast<char *>(pdata), len);
 }
 
 //连接通信介质
@@ -53,8 +63,7 @@ channel *channel::create_channel(const io_node *pio_node_const)
     io_node *pio_node   = const_cast<io_node *>(pio_node_const);
     EventLoop* event_loop;
 
-	LOG_INFO << "create channel with io_type" << pio_node->type_get();
-	pchannel                            = new channel;
+	pchannel                            = new channel();
     pchannel->event_loopthread_ = boost::shared_ptr<EventLoopThread>(new EventLoopThread(NULL));
     event_loop                          = pchannel->event_loopthread_->startLoop();
     io_node_type                        = io_node::io_type_get(pio_node->type_get());
@@ -97,6 +106,9 @@ channel *channel::create_channel(const io_node *pio_node_const)
     default:
         break;
     }
+    pchannel->io_base_->channel_set(pchannel);
+    pchannel->init();
+    pchannel->connect();
 
 	return pchannel;
 }

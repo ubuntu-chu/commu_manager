@@ -14,6 +14,21 @@ public:
             const char *name, const io_node *pio_node = NULL);
     void start();  // calls server_.start();
 
+    //初始化通信介质
+    virtual bool init(void)
+    {
+        server_.start();
+        return true;
+    }
+
+    //反初始化
+    virtual bool uninit()
+    {
+
+        return true;
+    }
+
+
 private:
     void onConnection(const TcpConnectionPtr& conn);
 

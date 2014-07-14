@@ -16,15 +16,18 @@ inner_client::inner_client(EventLoop* loop,
     // client_.enableRetry();
 }
 
-
 void inner_client::onConnection(const TcpConnectionPtr& conn)
 {
     LOG_INFO << conn->localAddress().toIpPort() << " -> "
             << conn->peerAddress().toIpPort() << " is "
             << (conn->connected() ? "UP" : "DOWN");
 
-    if (!conn->connected())
-        loop_->quit();
+    MutexLockGuard lock(mutex_);
+    if (conn->connected()) {
+        connection_ = conn;
+    } else {
+        connection_.reset();
+    }
 }
 
 void inner_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,

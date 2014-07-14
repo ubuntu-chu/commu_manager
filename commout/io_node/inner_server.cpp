@@ -12,11 +12,6 @@ inner_server::inner_server(EventLoop* loop,
             boost::bind(&inner_server::onMessage, this, _1, _2, _3));
 }
 
-void inner_server::start()
-{
-    server_.start();
-}
-
 void inner_server::onConnection(const TcpConnectionPtr& conn)
 {
     LOG_INFO << "inner_server - " << conn->peerAddress().toIpPort() << " -> "

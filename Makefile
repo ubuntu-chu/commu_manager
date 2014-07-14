@@ -194,7 +194,7 @@ DEPS    	= $(OBJS:.o=.d)
 ##对于C++ C的工程来讲 用于判断是否存在C++文件 这个也决定所使用的编译器 g++或gcc 
 SRC_CXX = $(filter-out %.c,$(SOURCES))
 
-.PHONY: all objs tags ctags clean distclean help show run target_type info strip install
+.PHONY: all objs tags ctags clean distclean help show run target_type info strip install kill
 
 # Delete the default suffixes
 .SUFFIXES:
@@ -309,6 +309,10 @@ else
 	file $(PROGRAMDIR)/$(PROGRAM)
 endif
 	@echo
+
+kill:
+	@echo "kill $(PROGRAM)"
+	killall -9 $(PROGRAM)
 
 strip:
 ifeq ($(BUILD_TYPE), TYPE_DYNAMIC)
