@@ -432,7 +432,7 @@ int xml_parse(const char *path)
         if (false == xml_QueryNode_Attribute(pEle, strAttrName, value)){
             return  -1;
         }
-        type                        = io_conf.io_type_get(value.c_str());
+        type                        = io_node::io_type_get(value.c_str());
         pio_node                    = io_conf.io_vector_get(type, io_conf.io_vector_no_get(type));
         for (pAttr = pEle->FirstAttribute(); pAttr; pAttr = pAttr->Next()) {
             if (0 == strcmp(def_NAME_STRING, pAttr->Name())){

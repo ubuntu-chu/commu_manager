@@ -1,9 +1,10 @@
 #include <includes/includes.h>
+#include <includes/config.h>
 #include "parse.h"
 #include "datum.h"
-#include "ext_client.h"
-#include "inner_client.h"
-#include "inner_server.h"
+#include "./io_node/ext_client.h"
+#include "./io_node/inner_client.h"
+#include "./io_node/inner_server.h"
 
 using std::string;
 
@@ -81,9 +82,10 @@ int main(int argc, char**argv)
         io_vector_no                    = io_conf.io_vector_no_get(i);
         for (j = 0; j < io_vector_no; j++){
             pio_node                    = io_conf.io_vector_get(i, j);
+#if 0
             //查找io配置中属于当前进程的io_node
             if (0 == strcmp(process_name_str.c_str(), pio_node->process_get())){
-                io_type                 = io_conf.io_type_get(pio_node->type_get());
+                io_type                 = io_node::io_type_get(pio_node->type_get());
                 switch (io_type){
                 case IO_TYPE_EXT_CLIENT:
                 {
@@ -134,6 +136,7 @@ int main(int argc, char**argv)
                     break;
                 }
             }
+#endif
         }
     }
 

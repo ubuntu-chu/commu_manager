@@ -2,7 +2,7 @@
 #define _INCLUEDES_H_
 
 //#include    "includes-low.h"
-#include "config.h"
+//#include "config.h"
 #include "shmem.h"
 
 #include <stdio.h>
@@ -21,6 +21,7 @@
 #include <muduo/net/TcpServer.h>
 #include <muduo/base/LogFile.h>
 #include <muduo/base/ProcessInfo.h>
+#include <muduo/net/EventLoopThread.h>
 
 #include <boost/bind.hpp>
 #include <boost/noncopyable.hpp>

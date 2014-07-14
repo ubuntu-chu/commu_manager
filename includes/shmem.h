@@ -6,7 +6,11 @@
 #include <sys/shm.h>
 #include <errno.h>
 #include <muduo/base/Logging.h>
-#include "config.h"
+
+//进程间共享内存定义
+#define 	def_FTOK_PATH 			("/etc/profile")
+#define 	def_FTOK_PROJ_ID 		(0x20)
+#define 	def_SHMEM_SIZE			(20*1024)
 
 class shmem{
 public:
