@@ -25,7 +25,8 @@ void inner_server::onMessage(const TcpConnectionPtr& conn,
     string msg(buf->retrieveAllAsString());
     LOG_INFO << conn->name() << " echo " << msg.size() << " bytes, "
             << "data received at " << time.toString();
-    conn->send(msg);
+//    conn->send(msg);
+    io_base::on_read(msg.c_str(), msg.size(), 0);
 }
 
 

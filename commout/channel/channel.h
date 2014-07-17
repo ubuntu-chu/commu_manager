@@ -4,9 +4,11 @@
 #include <io_node.h>
 #include <includes/includes.h>
 #include <io_base.h>
+#include <protocol.h>
 
 using namespace muduo;
 using namespace muduo::net;
+using muduo::net::Buffer;
 
 enum{
     COMM_ERROR          =   -1,
@@ -25,10 +27,11 @@ enum{
     COMM_DISACCEPT      =   109,        //不接收新的客户端（面向连接）
 
     //错误信息
-    COMM_NOACTIVECH     =   1000,       //没有处于工作状态的通道
-    COMM_NOTINIT        =   1001,       //通道未初始化
+    COMM_NOACTIVECH     =   -1000,       //没有处于工作状态的通道
+    COMM_NOTINIT        =   -1001,       //通道未初始化
+    CHANNEL_NOTINIT     =   -1002,       //通道未初始化
 
-    COMM_INVALIDPTR     =   2000,       //无效的指针
+    COMM_INVALIDPTR     =   -2000,       //无效的指针
 };
 
 class channel_runinfo{
@@ -53,37 +56,39 @@ public:
 class channel:boost::noncopyable{
 public:
     channel(){}
-    virtual ~channel(){}
+    ~channel(){}
 
     //初始化通信介质
-    virtual bool init(void);
+    bool init(void);
 
     //反初始化
-    virtual bool uninit();
+    bool uninit();
 
     //向通信介质写报文
     int write(const char *pdata, size_t len);
+    bool on_read(const char *pdata, int len, int flag);
 
     //连接通信介质
-    virtual bool connect(bool brelink = true);
+    bool connect(bool brelink = true);
 
     //断开通信介质，
-    virtual bool disconnect(void);
+    bool disconnect(void);
 
     channel_runinfo &get_runinfo()
     {
         return runinfo_;
     }
 
-    static channel *create_channel(const io_node *pio_node_const);
+    bool handle_timer(void);
 
-protected:
-    virtual bool on_read(const char *pdata, size_t len, int flag);
+    static channel *channel_create(const io_node *pio_node_const);
 
 private:
     channel_runinfo         runinfo_;
     boost::shared_ptr<io_base> io_base_;
+    boost::shared_ptr<protocol> protocol_;
     boost::shared_ptr<EventLoopThread> event_loopthread_;
+    EventLoop               *event_loop_;
 };
 
 #endif

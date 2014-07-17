@@ -28,6 +28,7 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
     MutexLockGuard lock(mutex_);
     if (conn->connected()) {
         connection_ = conn;
+        connection_->send("nihao");
     } else {
         connection_.reset();
     }
@@ -36,7 +37,12 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
 void ext_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,
         Timestamp receiveTime)
 {
-    buf->retrieveAll();
+//    buf->retrieveAll();
+    string msg(buf->retrieveAllAsString());
+    LOG_INFO << conn->name() << "msg :" << msg << msg.size() << " bytes, "
+            << "data received at " << receiveTime.toString();
+//    conn->send(msg);
+
 }
 
 

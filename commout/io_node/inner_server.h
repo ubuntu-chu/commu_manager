@@ -24,7 +24,6 @@ public:
     //反初始化
     virtual bool uninit()
     {
-
         return true;
     }
 

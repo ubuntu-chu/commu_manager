@@ -2,8 +2,8 @@
 #define _IO_BASE_H
 
 #include <includes/includes.h>
-#include <includes/includes.h>
 #include "io_node.h"
+using muduo::net::Buffer;
 
 class channel;
 //通信基类
@@ -18,7 +18,7 @@ public:
     //反初始化
     virtual bool uninit();
 
-    //关连导出类
+    //关连通道
     void channel_set(channel *pchannel)
     {
         pchannel_                   = pchannel;
@@ -37,7 +37,7 @@ public:
     virtual int send_data(char *pdata, size_t len);
 
     //从通道读报文
-    bool on_read(const char *pdata, size_t len, int flag);
+    bool on_read(const char *pdata, int len, int flag);
 
 protected:
 

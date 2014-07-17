@@ -15,6 +15,7 @@ public:
     //连接通信介质
     virtual bool connect(bool brelink = true)
     {
+        LOG_TRACE;
         client_.connect();
         return true;
     }
@@ -22,6 +23,7 @@ public:
     //断开通信介质，
     virtual bool disconnect(void)
     {
+        LOG_TRACE;
         client_.disconnect();
         return true;
     }

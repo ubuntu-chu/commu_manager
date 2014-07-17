@@ -85,7 +85,7 @@ int main(int argc, char**argv)
             pio_node                    = io_conf.io_vector_get(i, j);
             //查找io配置中属于当前进程的io_node
             if (0 == strcmp(process_name_str.c_str(), pio_node->process_get())){
-                channel_vector.push_back(channel::create_channel(pio_node));
+                channel_vector.push_back(channel::channel_create(pio_node));
             }
         }
     }
