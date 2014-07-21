@@ -4,10 +4,11 @@
 #include <includes/includes.h>
 #include <protocol.h>
 
+#define     def_PROTOCOL_RFID_NAME          ("rfid")
 
 class protocol_rfid:public protocol{
 public:
-    protocol_rfid():protocol("rfid"){}
+    protocol_rfid():protocol(def_PROTOCOL_RFID_NAME){}
     virtual ~protocol_rfid(){}
 
     //初始化规约

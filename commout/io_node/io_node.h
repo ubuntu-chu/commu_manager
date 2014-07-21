@@ -29,6 +29,7 @@
 #define    def_COM_STRING          ("com")
 #define    def_BITS_STRING         ("bits")
 #define    def_BPS_STRING          ("bps")
+#define    def_BITS_STRING         ("bits")
 #define    def_STOP_STRING         ("stop")
 #define    def_PARITY_STRING       ("parity")
 #define    def_SEND_INTERVAL_STRING    ("send_interval")
@@ -163,26 +164,54 @@ public:
 	~io_com_node(){}
 
 	void com_set(const char *com){strncpy(com_, com, sizeof(com_));}
+	const char * com_get(void){return com_;}
+
     int bps_set(int bps)
     {
         bps_ = bps;
         return 0;
     }
+    int bps_get(void)
+    {
+        return bps_;
+    }
+
     int stop_set(int stop)
     {
         stop_ = stop;
         return 0;
     }
+    int stop_get(void)
+    {
+        return stop_;
+    }
+
+    int bits_set(int bits)
+    {
+        bits_ = bits;
+        return 0;
+    }
+    int bits_get(void)
+    {
+        return bits_;
+    }
+
     int parity_set(int parity)
     {
         parity_ = parity;
         return 0;
     }
-	int ios_get(char **com, int &bps, int &stop, int &parity)
+    int parity_get(void)
+    {
+        return parity_;
+    }
+
+	int ios_get(char **com, int &bps, int &stop, int &bits, int &parity)
 	{
 		*com						= com_;
 		bps							= bps_;
 		stop 						= stop_;
+		bits 						= bits_;
 		parity						= parity_;
 
 		return 0;
@@ -215,6 +244,7 @@ public:
 private:
 	char   			com_[def_NAME_MAX_LEN];
 	int 			bps_;
+	int 			bits_;
 	int 			stop_;
 	int 			parity_;
 	int 			send_interval_;

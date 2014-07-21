@@ -2,6 +2,7 @@
 #include <inner_client.h>
 #include <ext_client.h>
 #include <inner_server.h>
+#include <com.h>
 
 //初始化通信介质
 bool channel::init(void)
@@ -106,7 +107,7 @@ channel *channel::channel_create(const io_node *pio_node_const)
                 reinterpret_cast<io_tcp_ext_client_node *>(pio_node);
         const InetAddress serverAddr(pio_tcp_ext_client_node->server_ip_get(),
                 pio_tcp_ext_client_node->server_port_get());
-        pchannel->io_base_ = boost::shared_ptr<io_base>(new ext_client(
+        pchannel->io_base_.reset(new ext_client(
                 event_loop, serverAddr, pio_tcp_ext_client_node->name_get(), pio_node));
     }
         break;
@@ -116,7 +117,7 @@ channel *channel::channel_create(const io_node *pio_node_const)
                 reinterpret_cast<io_tcp_client_node *>(pio_node);
         const InetAddress serverAddr(pio_tcp_client_node->server_ip_get(),
                 pio_tcp_client_node->server_port_get());
-        pchannel->io_base_ = boost::shared_ptr<io_base>(new inner_client(
+        pchannel->io_base_.reset(new inner_client(
                 event_loop, serverAddr, pio_tcp_client_node->name_get(), pio_node));
     }
         break;
@@ -127,11 +128,19 @@ channel *channel::channel_create(const io_node *pio_node_const)
 //        const InetAddress serverAddr(pio_tcp_server_node->server_ip_get(),
 //                pio_tcp_server_node->server_port_get());
         const InetAddress serverAddr(pio_tcp_server_node->server_port_get(), false);
-        pchannel->io_base_ = boost::shared_ptr<io_base>(new inner_server(
+        pchannel->io_base_.reset(new inner_server(
                 event_loop, serverAddr, pio_tcp_server_node->name_get(), pio_node));
     }
         break;
     case IO_TYPE_EXT_COM:
+    {
+        io_com_ext_node *pio_com_ext_node =
+                reinterpret_cast<io_com_ext_node *>(pio_node);
+//        pchannel->io_base_ = boost::shared_ptr<io_base>(new com(
+//                event_loop, pio_com_ext_node->name_get(), pio_node));
+        pchannel->io_base_.reset(new com(
+                event_loop, pio_com_ext_node->name_get(), pio_node));
+    }
         break;
 
     default:

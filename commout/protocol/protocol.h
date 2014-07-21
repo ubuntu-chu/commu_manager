@@ -18,9 +18,32 @@ public:
     uint32      m_nErrPackRate;        //误包率
 };
 
+class protocol_info{
+public:
+    protocol_info(){}
+    ~protocol_info(){}
+public:
+    void package_addr_set(char *package){m_ppackage     = package;}
+    char *package_addr_get(void){return m_ppackage;}
+
+    void package_len_set(uint16 len){m_len  = len;}
+    uint16 package_len_get(void){return m_len;}
+
+protected:
+    char               *m_ppackage;
+    uint16              m_len;
+};
+
+enum protocol_phase{
+    enum_PROTOCOL_PREPARE   = 0,
+    enum_PROTOCOL_DONE,
+};
+
 class channel;
 class protocol:boost::noncopyable{
 public:
+//    typedef boost::function<bool (enum protocol_phase phase, boost::shared_ptr<protocol_info>&info)> process_aframe_cb;
+
     protocol(const char *name = NULL):name_(name){}
     virtual ~protocol(){}
 
@@ -39,7 +62,7 @@ public:
     bool read_frchannel(const char *pdata, int len, int iflag = 0);
 
     //解析一帧报文
-    virtual bool process_frame(const char * pdata, int len, int iflag = 0);
+    virtual bool process_aframe(const char * pdata, int len, int iflag = 0);
 
     int write_tochannel(const char *pdata, int len);
 
@@ -67,11 +90,13 @@ public:
     static protocol *protocol_create(const char *name);
 
 private:
-    channel             *pchannel_;
     string              name_;
 	string   			describe_;
+    channel             *pchannel_;
 
-	Buffer              buffer_;
+	Buffer              inbuffer_;
+	Buffer              outbuffer_;
+    boost::shared_ptr<protocol_info> info_;
 	protocol_runinfo    runinfo_;
 };
 

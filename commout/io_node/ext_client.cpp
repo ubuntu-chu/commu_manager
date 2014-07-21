@@ -38,11 +38,28 @@ void ext_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,
         Timestamp receiveTime)
 {
 //    buf->retrieveAll();
-    string msg(buf->retrieveAllAsString());
+//    string msg(buf->retrieveAllAsString());
+    char print_buf[1000];
+    unsigned int i;
+    int len                  = 0;;
+    const char* begin       = buf->peek();
+
+    for (i = 0; i < buf->readableBytes(); i++){
+        len += snprintf(&print_buf[len], sizeof(print_buf)-len,
+                " %02x", static_cast<uint8>(begin[i]));
+    }
+
+
+    LOG_INFO << conn->name() << " msg :(" << print_buf << ") " << i << " bytes, "
+            << "received at " << receiveTime.toString();
+#if 0
     LOG_INFO << conn->name() << "msg :" << msg << msg.size() << " bytes, "
-            << "data received at " << receiveTime.toString();
+            << "received at " << receiveTime.toString();
+#endif
 //    conn->send(msg);
 
+    io_base::on_read(begin, i, 0);
+    buf->retrieveAll();
 }
 
 

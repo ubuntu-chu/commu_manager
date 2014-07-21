@@ -463,17 +463,20 @@ int xml_parse(const char *path)
             }else if (0 == strcmp(def_BPS_STRING , pAttr->Name())){
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->bps_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_BITS_STRING , pAttr->Name())){
+                reinterpret_cast<io_com_node *>(pio_node)
+                        ->bits_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_STOP_STRING , pAttr->Name())){
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->stop_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_PARITY_STRING , pAttr->Name())){
                 int parity;
                 if (0 == strcmp("none" , pAttr->Value())){
-                    parity                          = 2;
+                    parity                          = 'n';
                 }else if (0 == strcmp("odd" , pAttr->Value())){
-                    parity                          = 1;
+                    parity                          = 'o';
                 }else if (0 == strcmp("even" , pAttr->Value())){
-                    parity                          = 0;
+                    parity                          = 'e';
                 }
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->parity_set(parity);

@@ -22,38 +22,38 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
 {
     //通道信息
     if(iflag != 0) {
-        process_frame(pdata, len, iflag);
+        process_aframe(pdata, len, iflag);
         return true;
     }
-    buffer_.append(pdata, len);
-    while (buffer_.readableBytes()){
+    inbuffer_.append(pdata, len);
+    while (inbuffer_.readableBytes()){
         int         packlen;
         int         rt;
-        const char  *paddr        = buffer_.peek();
+        const char  *paddr        = inbuffer_.peek();
 
-        rt = validate_aframe(paddr, buffer_.readableBytes(), packlen);
+        rt = validate_aframe(paddr, inbuffer_.readableBytes(), packlen);
         //打印帧
         //帧尚未接收完全
         if (rt == 0){
             break;
         //错误帧
         }else if (rt < 0){
-            buffer_.retrieve(packlen);
+            inbuffer_.retrieve(packlen);
             runinfo_.m_nErrorPack++;
             break;
         //正确帧
         }else {
             runinfo_.m_nRcvPackTotal++;
         }
-        process_frame(paddr, packlen, iflag);
-        buffer_.retrieve(packlen);
+        process_aframe(paddr, packlen, iflag);
+        inbuffer_.retrieve(packlen);
     }
 
     return true;
 }
 
 //解析一帧报文
-bool protocol::process_frame(const char * pdata, int len, int iflag)
+bool protocol::process_aframe(const char * pdata, int len, int iflag)
 {
 
     return true;
@@ -64,11 +64,13 @@ int protocol::write_tochannel(const char *pdata, int len)
     if (NULL == pchannel_){
         return CHANNEL_NOTINIT;
     }
-    return pchannel_->write(pdata, len);
+    package_aframe(const_cast<char *>(pdata), len);
+    return pchannel_->write(outbuffer_.peek(), outbuffer_.readableBytes());
 }
 
 int  protocol::package_aframe(char* pdata, int len)
 {
+    LOG_TRACE;
 
     return 0;
 }
@@ -89,10 +91,10 @@ protocol *protocol::protocol_create(const char *name)
     protocol *pprotocol = NULL;
 
     LOG_INFO << "protocol[" << name << "] will be created!";
-    if (0 == strcmp("rfid", name)){
+    if (0 == strcmp(def_PROTOCOL_RFID_NAME, name)){
         pprotocol                   = new protocol_rfid();
-    }else if (0 == strcmp("raw", name)){
-        pprotocol                   = new protocol_raw();
+    }else if (0 == strcmp(def_PROTOCOL_MAC_NAME, name)){
+        pprotocol                   = new protocol_mac();
     }
 
     if (pprotocol == NULL){
