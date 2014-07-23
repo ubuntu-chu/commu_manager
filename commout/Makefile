@@ -44,8 +44,8 @@ LIBDIR      	= ../manager/libs
 LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../reactor ../boost ../ ./io_node ./protocol\
-			      ./protocol_rfid ./protocol_raw ./channel
+INCLUDEDIR   	= ../reactor ../boost ./io_node ./protocol ./utils \
+			      ./protocol_rfid ./protocol_raw ./channel ./config ./
 #make install INSTALL_PATH   
 #INSTALL_PATH变量可由make传递进来的参数改写
 #安装路径设置

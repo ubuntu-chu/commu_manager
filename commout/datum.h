@@ -1,7 +1,7 @@
 #ifndef    _DATUM_H
 #define    _DATUM_H
 
-#include <includes/config.h>
+#include <config.h>
 #include <includes/shmem.h>
 #include <muduo/base/Singleton.h>
 #include <muduo/net/EventLoop.h>

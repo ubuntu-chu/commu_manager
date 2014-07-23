@@ -329,6 +329,7 @@ int xml_parse(const char *path)
 #if 1
 	void	        *pshmem_addr 	    = reinterpret_cast<void *>(t_project_datum.shmem_.attach());
 	project_config	t_project_config;
+	power_config 	&power_conf	        = t_project_config.power_config_get();
 	process_config 	&process_conf	    = t_project_config.process_config_get();
 	protocol_config &protocol_conf	    = t_project_config.protocol_config_get();
 	io_config       &io_conf	        = t_project_config.io_config_get();
@@ -352,6 +353,38 @@ int xml_parse(const char *path)
 	    return  -1;
 	}
 	TiXmlElement *pRootEle = doc.RootElement();
+
+	//解析power配置信息
+	strNodeName                         = def_POWER_STRING;
+    xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
+    if (NULL == pNode) {
+	    return  -1;
+    }
+    strAttrName                         = def_DESCRIBE_STRING;
+    if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+	    return  -1;
+    }
+    power_conf.describe_set(value.c_str());
+    //遍历pNode下所有节点
+    for (pEle = pNode->FirstChildElement(); pEle;
+            pEle = pEle->NextSiblingElement()) {
+        //遍历此节点下所有属性 并加入到process配置中
+        TiXmlAttribute* pAttr = NULL;
+        power_node        t_power_node;
+        for (pAttr = pEle->FirstAttribute(); pAttr; pAttr = pAttr->Next()) {
+            if (0 == strcmp(def_NAME_STRING, pAttr->Name())){
+                t_power_node.name_set(pAttr->Value());
+            }else if (0 == strcmp(def_DESCRIBE_STRING , pAttr->Name())){
+                t_power_node.describe_set(pAttr->Value());
+            }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
+                t_power_node.path_set(pAttr->Value());
+            }
+        }
+        //检测power控制文件是否存在
+        t_power_node.power_exist_chk();
+        power_conf.power_add(t_power_node);
+    }
+
 	//解析process配置信息
 	strNodeName                         = def_PROCESS_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
@@ -374,7 +407,7 @@ int xml_parse(const char *path)
                 t_process_node.name_set(pAttr->Value());
             }else if (0 == strcmp(def_DESCRIBE_STRING , pAttr->Name())){
                 t_process_node.describe_set(pAttr->Value());
-            }else if (0 == strcmp(def_FILE_PATH_STRING , pAttr->Name())){
+            }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
                 t_process_node.file_path_set(pAttr->Value());
             }
         }
@@ -403,7 +436,7 @@ int xml_parse(const char *path)
                 t_protocol_node.name_set(pAttr->Value());
             }else if (0 == strcmp(def_DESCRIBE_STRING , pAttr->Name())){
                 t_protocol_node.describe_set(pAttr->Value());
-            }else if (0 == strcmp(def_FILE_PATH_STRING , pAttr->Name())){
+            }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
                 t_protocol_node.file_path_set(pAttr->Value());
             }
         }
@@ -424,7 +457,7 @@ int xml_parse(const char *path)
     //遍历pNode下所有节点
     for (pEle = pNode->FirstChildElement(); pEle;
             pEle = pEle->NextSiblingElement()) {
-        //遍历此节点下所有属性 并加入到device配置中
+        //遍历此节点下所有属性 并加入到io配置中
         TiXmlAttribute* pAttr = NULL;
         io_node                 *pio_node;
         int            type;
@@ -471,11 +504,11 @@ int xml_parse(const char *path)
                         ->stop_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_PARITY_STRING , pAttr->Name())){
                 int parity;
-                if (0 == strcmp("none" , pAttr->Value())){
+                if (0 == strcmp(def_PARITY_NONE_STRING , pAttr->Value())){
                     parity                          = 'n';
-                }else if (0 == strcmp("odd" , pAttr->Value())){
+                }else if (0 == strcmp(def_PARITY_ODD_STRING , pAttr->Value())){
                     parity                          = 'o';
-                }else if (0 == strcmp("even" , pAttr->Value())){
+                }else if (0 == strcmp(def_PARITY_EVEN_STRING , pAttr->Value())){
                     parity                          = 'e';
                 }
                 reinterpret_cast<io_com_node *>(pio_node)
@@ -495,6 +528,12 @@ int xml_parse(const char *path)
             }else if (0 == strcmp(def_SENSOR_ADDR_STRING , pAttr->Name())){
                 reinterpret_cast<io_com_ext_node *>(pio_node)
                         ->sensor_addr_set(pAttr->Value());
+            }else if (0 == strcmp(def_POWER_GROUP_STRING , pAttr->Name())){
+                reinterpret_cast<io_com_node *>(pio_node)
+                        ->power_group_set(pAttr->Value());
+                //与power_node建立联系
+                reinterpret_cast<io_com_node *>(pio_node)
+                        ->power_node_set(power_conf.power_node_get(pAttr->Value()));
             }
         }
         io_conf.io_vector_no_inc(type);
@@ -516,21 +555,77 @@ int xml_parse(const char *path)
             pEle = pEle->NextSiblingElement()) {
         //遍历此节点下所有属性 并加入到device配置中
         TiXmlAttribute* pAttr = NULL;
-        device_node             t_device_node;
+        device_node                 *pnode;
+        int            type;
+        strAttrName                         = def_TYPE_STRING;
+        if (false == xml_QueryNode_Attribute(pEle, strAttrName, value)){
+            return  -1;
+        }
+        type                        = device_node::device_type_get(value.c_str());
+        pnode                       = device_conf.device_vector_get(type, device_conf.device_vector_no_get(type));
         for (pAttr = pEle->FirstAttribute(); pAttr; pAttr = pAttr->Next()) {
             if (0 == strcmp(def_NAME_STRING, pAttr->Name())){
-                t_device_node.name_set(pAttr->Value());
+                pnode->name_set(pAttr->Value());
             }else if (0 == strcmp(def_DESCRIBE_STRING , pAttr->Name())){
-                t_device_node.describe_set(pAttr->Value());
-            }else if (0 == strcmp(def_FILE_PATH_STRING , pAttr->Name())){
-                t_device_node.vender_set(pAttr->Value());
+                pnode->describe_set(pAttr->Value());
+            }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
+                pnode->vender_set(pAttr->Value());
             }else if (0 == strcmp(def_ID_STRING , pAttr->Name())){
-                t_device_node.id_set(atoi(pAttr->Value()));
+                pnode->id_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_IO_STRING , pAttr->Name())){
-                t_device_node.io_set(pAttr->Value());
+                pnode->io_set(pAttr->Value());
+            }else if (0 == strcmp(def_TYPE_STRING , pAttr->Name())){
+                pnode->type_set(pAttr->Value());
+            }else if (0 == strcmp(def_MIN_POWER_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->min_power_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_MAX_POWER_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->max_power_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_MIN_SCANTIME_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->min_scantime_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_MAX_SCANTIME_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->max_scantime_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_EPC_LEN_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->epc_len_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_DATA_LEN_STRING , pAttr->Name())){
+                reinterpret_cast<device_rfid_reader_node *>(pnode)
+                        ->data_len_set(atoi(pAttr->Value()));
             }
         }
-        device_conf.device_add(t_device_node);
+        device_conf.device_vector_no_inc(type);
+    }
+
+    //建立起通道与设备之间的归属关系
+    //将设备挂在到通道的设备链表上   匹配依据是设备的io与通道的name相等
+	int             i, j;
+	int             ii, jj;
+	int             io_vector_no, device_vector_no;
+    device_node     *pdevice_node;
+    io_node         *pio_node;
+    list_head_t     *phead;
+    list_node_t     *pnode;
+
+    for (ii = device_conf.device_type_start(); ii < device_conf.device_type_end(); ii++){
+        device_vector_no               = device_conf.device_vector_no_get(ii);
+        for (jj = 0; jj < device_vector_no; jj++){
+            pdevice_node               = device_conf.device_vector_get(ii, jj);
+            for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
+                io_vector_no                    = io_conf.io_vector_no_get(i);
+                for (j = 0; j < io_vector_no; j++){
+                    pio_node                    = io_conf.io_vector_get(i, j);
+                    //查找io配置中属于当前进程的io_node
+                    if (0 == strcmp(pdevice_node->io_get(), pio_node->name_get())){
+                        phead                   = pio_node->device_list_head_get();
+                        pnode                   = pdevice_node->node_get();
+                        list_insert_after(phead, pnode);
+                    }
+                }
+            }
+        }
     }
 
     //将工程配置信息写入到共享内存中

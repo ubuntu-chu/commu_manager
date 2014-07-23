@@ -1,5 +1,5 @@
 #include <includes/includes.h>
-#include <includes/config.h>
+#include <config.h>
 #include "parse.h"
 #include "datum.h"
 #include "channel/channel.h"
