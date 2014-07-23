@@ -98,6 +98,8 @@ int  protocol_mac::package_aframe(char* pdata, int len)
 
     val_len = val_len + def_FRAME_CK_LEN + def_FRAME_DELIMITER_LEN; // whole frame len
 
+    outbuffer_.append(ptr, val_len);
+
     return val_len;                                           // whole frame len
 }
 
@@ -107,12 +109,16 @@ bool protocol_mac::process_aframe(const char * pdata, int len, int iflag)
 
     return true;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 //函数说明: 验证一帧是否有效
 //参数说明: BYTE* pData 报文数据缓冲区
 //参数说明: int iDataLen 缓冲区数据长度
+//参数说明: int& iPackLen 数据帧长度  当数据仍在接收时 不关心ipacklen的值
+//返 回 值: < 0 数据仍在接受   = 0 一帧接收完成   < 0 一帧接收出错
 //备    注:
 ////////////////////////////////////////////////////////////////////////////////
+
 int  protocol_mac::validate_aframe(const char* pdata, int len, int& ipacklen)
 {
     uint16 chk_sum;

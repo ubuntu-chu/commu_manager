@@ -64,6 +64,7 @@ int protocol::write_tochannel(const char *pdata, int len)
     if (NULL == pchannel_){
         return CHANNEL_NOTINIT;
     }
+    outbuffer_.retrieveAll();
     package_aframe(const_cast<char *>(pdata), len);
     return pchannel_->write(outbuffer_.peek(), outbuffer_.readableBytes());
 }

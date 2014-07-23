@@ -1,4 +1,5 @@
 #include "ext_client.h"
+#include <utils.h>
 
 
 ext_client::ext_client(EventLoop* loop,
@@ -37,28 +38,11 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
 void ext_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,
         Timestamp receiveTime)
 {
-//    buf->retrieveAll();
-//    string msg(buf->retrieveAllAsString());
-    char print_buf[1000];
-    unsigned int i;
-    int len                  = 0;;
-    const char* begin       = buf->peek();
-
-    for (i = 0; i < buf->readableBytes(); i++){
-        len += snprintf(&print_buf[len], sizeof(print_buf)-len,
-                " %02x", static_cast<uint8>(begin[i]));
-    }
-
-
-    LOG_INFO << conn->name() << " msg :(" << print_buf << ") " << i << " bytes, "
-            << "received at " << receiveTime.toString();
-#if 0
-    LOG_INFO << conn->name() << "msg :" << msg << msg.size() << " bytes, "
-            << "received at " << receiveTime.toString();
-#endif
+    utils::log_binary_buf(buf->peek(), buf->readableBytes());
+    LOG_INFO << conn->name() << "received at " << receiveTime.toString();
 //    conn->send(msg);
 
-    io_base::on_read(begin, i, 0);
+    io_base::on_read(buf->peek(), buf->readableBytes(), 0);
     buf->retrieveAll();
 }
 

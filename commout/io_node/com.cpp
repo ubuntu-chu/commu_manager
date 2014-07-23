@@ -1,4 +1,5 @@
 #include "com.h"
+#include <utils.h>
 
 struct baud_setting{
     int     m_baud;
@@ -328,7 +329,8 @@ void com::handle_read(Timestamp receiveTime)
             break;
         }
     }
-    LOG_INFO << pio_com_ext_node->com_get() << "readable; len = " << len;
+    LOG_INFO << pio_com_ext_node->com_get() << "readable";
+    utils::log_binary_buf(buf, len);
     io_base::on_read(buf, len, 0);
 }
 

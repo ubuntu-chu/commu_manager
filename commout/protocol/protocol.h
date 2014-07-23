@@ -66,15 +66,15 @@ public:
 
     int write_tochannel(const char *pdata, int len);
 
-    //下行报文打包函数
+    //下行报文打包函数  目前不关心其返回值  程序可返回其打包后的整体长度
     virtual int  package_aframe(char* pdata, int len);
 
     ////////////////////////////////////////////////////////////////////////////////
     //函数说明: 验证一帧是否有效
     //参数说明: BYTE* pData 报文数据缓冲区
     //参数说明: int iDataLen 缓冲区数据长度
-    //参数说明: int& iPackLen 数据帧长度  iPackLen > 0:ok;  ==0:no end;  <0 error frame
-    //返 回 值: virtual int 帧起始位置在数据缓冲区的偏移
+    //参数说明: int& iPackLen 数据帧长度  当数据仍在接收时 不关心ipacklen的值
+    //返 回 值: < 0 数据仍在接受   = 0 一帧接收完成   < 0 一帧接收出错
     //备    注:
     ////////////////////////////////////////////////////////////////////////////////
     virtual int  validate_aframe(const char* pdata, int len, int& ipacklen);
@@ -89,13 +89,15 @@ public:
 
     static protocol *protocol_create(const char *name);
 
+protected:
+	Buffer              inbuffer_;
+	Buffer              outbuffer_;
+
 private:
     string              name_;
 	string   			describe_;
     channel             *pchannel_;
 
-	Buffer              inbuffer_;
-	Buffer              outbuffer_;
     boost::shared_ptr<protocol_info> info_;
 	protocol_runinfo    runinfo_;
 };

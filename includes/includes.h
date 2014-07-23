@@ -19,6 +19,7 @@
 #include <fcntl.h>      /*文件控制定义*/
 #include <termios.h>    /*PPSIX终端控制定义*/
 #include <time.h>
+#include <endian.h>
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
@@ -67,6 +68,9 @@ typedef uint8										byte;
 typedef uint16 										hword;
 typedef uint32 										word;
 typedef uint64 										dword;
+
+typedef int                                        portBASE_TYPE;
+typedef unsigned int                              portuBASE_TYPE;
 
 
 
