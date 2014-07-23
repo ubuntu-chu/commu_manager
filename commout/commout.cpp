@@ -27,7 +27,7 @@ using namespace muduo::net;
 void signal_handle(int sign_no)
 {
     if (sign_no == SIGINT){
-        t_project_datum.pevent_loop_->quit();
+//        t_project_datum.pevent_loop_->quit();
     }
 }
 
@@ -71,7 +71,7 @@ int main(int argc, char**argv)
 //	EventLoop loop;
 //	t_project_datum.pevent_loop_             = &loop;
 
-	//依据配置资源 创建客户端
+	//依据配置资源 创建channel
 	project_config	*pproject_config     = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
     boost::ptr_vector<channel> channel_vector;
