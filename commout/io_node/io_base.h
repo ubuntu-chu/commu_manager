@@ -39,6 +39,13 @@ public:
     //从通道读报文
     bool on_read(const char *pdata, int len, int flag);
 
+    int duplextype_get(void)
+    {
+        return pio_node_->duplextype_get();
+    }
+
+    void send_status_end(void);
+
 protected:
 
     int                 m_nLastSend; //最近周期内发送的报文字节数

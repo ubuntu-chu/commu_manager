@@ -6,6 +6,7 @@
 #include "./io_node/ext_client.h"
 #include "./io_node/inner_client.h"
 #include "./io_node/inner_server.h"
+#include "rfid.h"
 
 using std::string;
 
@@ -30,6 +31,8 @@ void signal_handle(int sign_no)
 //        t_project_datum.pevent_loop_->quit();
     }
 }
+
+static CDevice_Rfid device_rfid;
 
 int main(int argc, char**argv)
 {
@@ -75,6 +78,7 @@ int main(int argc, char**argv)
 	project_config	*pproject_config     = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
     boost::ptr_vector<channel> channel_vector;
+//    vector<boost::shared_ptr<channel> > channel_vector;
 	io_node         *pio_node;
 	int             i, j;
 	int             io_vector_no;
@@ -85,14 +89,39 @@ int main(int argc, char**argv)
             pio_node                    = io_conf.io_vector_get(i, j);
             //查找io配置中属于当前进程的io_node
             if (0 == strcmp(process_name_str.c_str(), pio_node->process_get())){
-                channel_vector.push_back(channel::channel_create(pio_node));
+                channel *pchannel = channel::channel_create(pio_node);
+                channel_vector.push_back(pchannel);
+//                channel_vector.push_back(channel::channel_create(pio_node));
+                if (pchannel->contain_protocol("rfid")){
+
+                    device_rfid.channel_set(pchannel);
+                }
             }
         }
     }
+#if 0
+    //遍历容器
+    for(vecotr<boost::shared_ptr<channel> >::iterator iter = channel_vector.begin();
+//    for(boost::ptr_vector<channel>::iterator iter = channel_vector.begin();
+            iter != channel_vector.end(); ++iter){
+        if (iter->contain_protocol("rfid")){
+
+            device_rfid.channel_set(iter.get());
+        }
+
+    }
+#endif
+    device_rfid.reader_id_set(0);
+//    device_rfid.query_rfid(NULL);
+    device_rfid.query_readerinfo(NULL);
 
 //	LOG_INFO << "loop.loop()";
 //	loop.loop();
-    while (1);
+//    while (1);
+    while (1){
+        sleep(1);
+        device_rfid.query_readerinfo(NULL);
+    }
 
 	LOG_INFO << "program exit";
 	t_project_datum.shmem_.detach();

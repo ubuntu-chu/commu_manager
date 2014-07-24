@@ -38,7 +38,6 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
 void ext_client::onMessage(const TcpConnectionPtr& conn, Buffer* buf,
         Timestamp receiveTime)
 {
-    utils::log_binary_buf(buf->peek(), buf->readableBytes());
     LOG_INFO << conn->name() << "received at " << receiveTime.toString();
 //    conn->send(msg);
 

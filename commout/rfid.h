@@ -87,12 +87,14 @@ struct write_info{
 	uint8_t			m_pwd[4];
 };
 
-#if 0
+class channel;
 
-class CDevice_Rfid:public CDeive_Base{
+class CDevice_Rfid:boost::noncopyable{
 public:
-    CDevice_Rfid(const char *pname, uint16 oflag);
-    virtual ~CDevice_Rfid();
+    CDevice_Rfid():max_wait_time_(3), reader_id_(0), offset_(4){};
+    ~CDevice_Rfid(){};
+
+    void reader_id_set(uint8 id){reader_id_ = id;}
 	portBASE_TYPE query_rfid(struct epc_info *pinfo);
 	portBASE_TYPE query_readerinfo(struct reader_info *info);
 	portBASE_TYPE querytime_set(uint8 scantime);
@@ -101,19 +103,19 @@ public:
 	portBASE_TYPE write_data(struct write_info *pinfo, uint8 *pbuf);
 	portBASE_TYPE max_wait_time_set(uint8 wait_time);
 	static portBASE_TYPE epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc);
+
+	void channel_set(channel *pchannel){pchannel_    = pchannel;}
 private:
     CDevice_Rfid(const CDevice_Rfid &other);
     CDevice_Rfid &operator =(const CDevice_Rfid &other);
-    virtual portBASE_TYPE process_read(void);
-    virtual portBASE_TYPE process_write(char *pbuf, uint16 size);
-	void send_buf_dump(void);
-    uint8					m_buffsend[50];
-    uint8					m_buffrecv[260];
 
 	struct rfid_rsp_info		m_rsp_info;
+	int                         max_wait_time_;
+	uint8                       reader_id_;
+	uint8                       offset_;
+	channel                     *pchannel_;
 };    
     
-#endif
     
 
 

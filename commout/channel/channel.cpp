@@ -3,6 +3,7 @@
 #include <ext_client.h>
 #include <inner_server.h>
 #include <com.h>
+#include <utils.h>
 
 //初始化通信介质
 bool channel::init(void)
@@ -11,6 +12,7 @@ bool channel::init(void)
 	if ((NULL == protocol_) || (NULL == io_base_)){
 	    return false;
 	}
+	duplex_type_                = io_base_->duplextype_get();
     protocol_->init();
 	return io_base_->init();
 }
@@ -26,16 +28,91 @@ bool channel::uninit(void)
 	return io_base_->uninit();
 }
 
-//向通信介质写报文
-int channel::write(const char *pdata, size_t len)
+bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 {
-    if(io_base_ == NULL || runinfo_.m_bStatus == false)
+    int i;
+
+    MutexLockGuard lock(mutex_);
+    if (0 == iflag){
+        for (i = 0; i < len; i++){
+            vec_ret_.push_back(pdata[i]);
+        }
+    }
+    status_                           = iflag;
+    condition_.notify();
+    LOG_TRACE << "condition ocurred, wake up";
+
+    return true;
+}
+
+int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
+{
+    MutexLockGuard lock(mutex_);
+    status_                           = 1;
+    vec_ret_.clear();
+    LOG_TRACE << "condition wait start with " << wait_time << " sec";
+    event_loop_->runInLoop(boost::bind(&channel::write_sync, this, vec));
+    condition_.waitForSeconds(wait_time);
+    if (status_ > 0){
+        LOG_TRACE << "condition wait end with time out";
+    }else if (status_ == 0){
+        LOG_TRACE << "condition wait end with complete";
+    }else {
+        LOG_TRACE << "condition wait end with error = [" << status_ << "]";
+    }
+    if (NULL != ppvec_ret){
+        *ppvec_ret                      = &vec_ret_;
+    }
+
+    return status_;
+}
+//向通信介质写报文
+int channel::write_sync(vector<char> &vec)
+{
+    if(runinfo_.m_bStatus == false)
+        return COMM_NOTINIT;
+
+    utils::log_binary_buf("channel::write", &vec[0], vec.size());
+    if (NULL != protocol_){
+        return protocol_->write_tochannel(&vec[0], vec.size());
+    }
+    return on_write(&vec[0], vec.size());
+}
+
+int channel::write_inloop(vector<char> &vec)
+{
+    event_loop_->runInLoop(boost::bind(&channel::write, this, vec));
+
+    return 0;
+}
+//向通信介质写报文
+int channel::write(vector<char> &vec)
+{
+    if(runinfo_.m_bStatus == false)
+        return COMM_NOTINIT;
+
+    utils::log_binary_buf("channel::write", &vec[0], vec.size());
+    if (NULL != protocol_){
+        return protocol_->write_tochannel(&vec[0], vec.size());
+    }
+    return on_write(&vec[0], vec.size());
+}
+
+//向通信介质写报文
+int channel::on_write(const char *pdata, size_t len)
+{
+    int  rt;
+    if((io_base_ == NULL) || (runinfo_.m_bStatus == false))
         return COMM_NOTINIT;
 
     if(pdata == NULL)
         return COMM_INVALIDPTR;
 
-    return io_base_->send_package(const_cast<char *>(pdata), len);
+    utils::log_binary_buf("channel::on_write", pdata, len);
+    send_status_set(true);
+    rt      =  io_base_->send_package(const_cast<char *>(pdata), len);
+
+    return rt;
 }
 
 //连接通信介质
@@ -69,6 +146,7 @@ bool channel::handle_timer(void)
 
 bool channel::on_read(const char *pdata, int len, int flag)
 {
+    utils::log_binary_buf("channel::on_read", pdata, len);
 	if (NULL != protocol_){
 	    return protocol_->read_frchannel(pdata, len, flag);
 	}
@@ -153,5 +231,16 @@ channel *channel::channel_create(const io_node *pio_node_const)
 	return pchannel;
 }
 
+bool channel::contain_protocol(const char *name)
+{
+    if (NULL == protocol_){
+        return false;
+    }
+    if (0 == strcmp(name, protocol_->name_get().c_str())){
+        return true;
+    }
+
+    return false;
+}
 
 

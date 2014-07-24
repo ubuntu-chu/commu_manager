@@ -30,14 +30,18 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         int         packlen;
         int         rt;
         const char  *paddr        = inbuffer_.peek();
+        int         len            = inbuffer_.readableBytes();
 
-        rt = validate_aframe(paddr, inbuffer_.readableBytes(), packlen);
+        utils::log_binary_buf("protocol::read_frchannel", paddr, len);
+        rt = validate_aframe(paddr, len, packlen);
         //打印帧
         //帧尚未接收完全
         if (rt == 0){
             break;
         //错误帧
         }else if (rt < 0){
+            //让应用软件处理错误帧
+            process_aframe(paddr, packlen, rt);
             inbuffer_.retrieve(packlen);
             runinfo_.m_nErrorPack++;
             break;
@@ -55,7 +59,10 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
 //解析一帧报文
 bool protocol::process_aframe(const char * pdata, int len, int iflag)
 {
-
+    if (NULL == pchannel_){
+        return false;
+    }
+    pchannel_->on_process_aframe(pdata, len, iflag);
     return true;
 }
 
@@ -65,8 +72,11 @@ int protocol::write_tochannel(const char *pdata, int len)
         return CHANNEL_NOTINIT;
     }
     outbuffer_.retrieveAll();
+    if (enum_WORK_TYPE_HALF_DUPLEX == pchannel_->duplextype_get()){
+        inbuffer_.retrieveAll();
+    }
     package_aframe(const_cast<char *>(pdata), len);
-    return pchannel_->write(outbuffer_.peek(), outbuffer_.readableBytes());
+    return pchannel_->on_write(outbuffer_.peek(), outbuffer_.readableBytes());
 }
 
 int  protocol::package_aframe(char* pdata, int len)

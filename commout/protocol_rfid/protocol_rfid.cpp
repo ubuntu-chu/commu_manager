@@ -61,7 +61,7 @@ int protocol_rfid::package_aframe(char* pdata, int len)
 
 bool protocol_rfid::process_aframe(const char * pdata, int len, int iflag)
 {
-
+    protocol::process_aframe(pdata, len, iflag);
     return true;
 }
 
@@ -81,18 +81,37 @@ int  protocol_rfid::validate_aframe(const char* pdata, int len, int& ipacklen)
     int     rt                  = 1;
 
     ipacklen                    = 0;
-    if (len != pdata[0]){
+    if (len < (pdata[0] + 1)){
         rt                      = 0;
         goto quit;
     }
     ipacklen                    = len;
     //caculate crc
+    //验证crc校验码
     crc     = uiCrc16Cal(reinterpret_cast<const unsigned char *>(pdata), len);
     if (0 != crc){
         rt                      = -1;
         goto quit;
     }
 
+//    utils::log_binary_buf("protocol_rfid::validate_aframe", outbuffer_.peek(), outbuffer_.readableBytes());
+    //对接收到的数据内容进行校验
+    //地址校验
+    outbuffer_.retrieveInt8();
+    if (pdata[1] != outbuffer_.readInt8()){
+        rt                      = -2;
+        goto quit;
+    }
+    //命令校验
+    if (pdata[2] != outbuffer_.readInt8()){
+        rt                      = -3;
+        goto quit;
+    }
+    //命令执行状态校验
+    if (pdata[3] != 0){
+        rt                      = -4;
+        goto quit;
+    }
 quit:
     LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen;
     return rt;

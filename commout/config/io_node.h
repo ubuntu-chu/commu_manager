@@ -4,6 +4,11 @@
 #include "project_param.h"
 #include "power_node.h"
 
+enum {
+    enum_WORK_TYPE_HALF_DUPLEX  = 0,
+    enum_WORK_TYPE_DUPLEX,
+
+};
 //io类型定义
 enum{
     IO_TYPE_BEGIN       = 0,
@@ -34,7 +39,7 @@ public:
 	~io_node(){}
 
 	void name_set(const char *name){strncpy(name_, name, sizeof(name_));}
-	const char *name_get(void){return name_;}
+	const char *name_get(void) const{return name_;}
 
 	void describe_set(const char *describe){strncpy(describe_, describe, sizeof(describe_));}
 	const char *describe_get(void){return describe_;}
@@ -50,6 +55,18 @@ public:
 
 	void map_set(const char *map){strncpy(map_, map, sizeof(map_));}
 	const char *map_get(void){return map_;}
+
+    int duplextype_get(void) const
+    {
+        int     type    = io_type_get(type_);
+
+        if (type == IO_TYPE_EXT_COM){
+            return enum_WORK_TYPE_HALF_DUPLEX;
+        }
+
+        return enum_WORK_TYPE_DUPLEX;
+    }
+
 
     static int io_type_get(const char *type_str)
     {

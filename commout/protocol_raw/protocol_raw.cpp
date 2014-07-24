@@ -105,7 +105,7 @@ int  protocol_mac::package_aframe(char* pdata, int len)
 
 bool protocol_mac::process_aframe(const char * pdata, int len, int iflag)
 {
-    LOG_INFO;
+    protocol::process_aframe(pdata, len, iflag);
 
     return true;
 }

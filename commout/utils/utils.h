@@ -5,8 +5,7 @@
 namespace utils{
 
 
-void log_binary_buf(const char *pbuf, int len);
-
+void log_binary_buf(const char *pmsg, const char *pbuf, int len);
 
 
 

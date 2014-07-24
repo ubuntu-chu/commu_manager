@@ -43,6 +43,11 @@
 #include <vector>
 #include <map>
 
+#include <utils.h>
+
+using std::vector;
+using std::string;
+using std::map;
 
 //base type define
 typedef unsigned char 							uint8;

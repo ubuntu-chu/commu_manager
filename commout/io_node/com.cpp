@@ -306,14 +306,13 @@ int com::send_data(char *pdata, size_t len)
 int com::_send_data(char *pdata, size_t len)
 {
     dev_write(fd_, pdata, len);
+    send_status_end();
 
     return len;
 }
 
 void com::handle_read(Timestamp receiveTime)
 {
-    io_com_ext_node *pio_com_ext_node =
-            reinterpret_cast<io_com_ext_node *>(const_cast<io_node *>(pio_node_));
     char buf[1000];
     ssize_t len;
 
@@ -329,8 +328,6 @@ void com::handle_read(Timestamp receiveTime)
             break;
         }
     }
-    LOG_INFO << pio_com_ext_node->com_get() << "readable";
-    utils::log_binary_buf(buf, len);
     io_base::on_read(buf, len, 0);
 }
 

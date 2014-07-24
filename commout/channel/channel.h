@@ -38,13 +38,15 @@ class channel_runinfo{
 public:
     bool            m_bStatus;             //通信是否正常
     bool            m_bConnected;           //是否连接（面向连接的通道有效）
+    bool            m_bsend;                //发送状态
     int             m_nRcvByteTotal;        //接受数据包累计
     int             m_nSndByteTotal;        //发送数据包累计
     int             m_nRcvByteAverage;      //每秒接受数据包
     int             m_nSndByteAverage;      //每秒发送数据包
 };
 
-class CChannWorkType {
+
+class channel_worktype {
 public:
     bool            m_bAutoSwitch;  //面向连接的通道断开是否自动切换
     bool            m_AutoToMain;   //备用通道工作时是否自动切换到主通道
@@ -55,7 +57,9 @@ public:
 
 class channel:boost::noncopyable{
 public:
-    channel(){}
+    channel():mutex_(),
+        condition_(mutex_),
+        status_(0){}
     ~channel(){}
 
     //初始化通信介质
@@ -64,9 +68,19 @@ public:
     //反初始化
     bool uninit();
 
+    //向通信介质写报文   同步版本
+    //返回值： > 0  执行超时
+    //       = 0  执行成功
+    //       < 0  执行错误
+    int write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret);
+
     //向通信介质写报文
-    int write(const char *pdata, size_t len);
+    int write_inloop(vector<char> &vec);
+
+    int on_write(const char *pdata, size_t len);
     bool on_read(const char *pdata, int len, int flag);
+
+    bool on_process_aframe(const char * pdata, int len, int iflag = 0);
 
     //连接通信介质
     bool connect(bool brelink = true);
@@ -83,12 +97,40 @@ public:
 
     static channel *channel_create(const io_node *pio_node_const);
 
+    bool contain_protocol(const char *name);
+
+    int duplextype_get(void)
+    {
+        return duplex_type_;
+    }
+
+    void send_status_set(bool status)
+    {
+        runinfo_.m_bsend                    = status;
+    }
+    bool send_status_get(void)
+    {
+        return runinfo_.m_bsend;
+    }
+
 private:
+    int write(vector<char> &vec);
+    int write_sync(vector<char> &vec);
+
+
     channel_runinfo         runinfo_;
+    int                     duplex_type_;
+
+//    channel_worktype        work_type;
     boost::shared_ptr<io_base> io_base_;
     boost::shared_ptr<protocol> protocol_;
     boost::shared_ptr<EventLoopThread> event_loopthread_;
     EventLoop               *event_loop_;
+
+    mutable MutexLock      mutex_;
+    Condition               condition_;
+    int                    status_;
+    vector<char>            vec_ret_;
 };
 
 #endif
