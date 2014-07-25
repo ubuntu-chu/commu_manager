@@ -25,7 +25,6 @@ public:
 	    fd_ = open(path_, O_RDWR);
 	    return (-1 == fd_)?(false):(true);
 	}
-private:
 	bool power_ctrl(char value)
 	{
 	    if (-1 == fd_){
@@ -37,6 +36,7 @@ private:
 	        return false;
 	    }
 	}
+private:
 
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];

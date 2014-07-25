@@ -382,6 +382,8 @@ int xml_parse(const char *path)
         }
         //检测power控制文件是否存在
         t_power_node.power_exist_chk();
+        //默认power关闭
+        t_power_node.power_off();
         power_conf.power_add(t_power_node);
     }
 
@@ -467,6 +469,7 @@ int xml_parse(const char *path)
         }
         type                        = io_node::io_type_get(value.c_str());
         pio_node                    = io_conf.io_vector_get(type, io_conf.io_vector_no_get(type));
+        pio_node->io_type_set(type);
         for (pAttr = pEle->FirstAttribute(); pAttr; pAttr = pAttr->Next()) {
             if (0 == strcmp(def_NAME_STRING, pAttr->Name())){
                 pio_node->name_set(pAttr->Value());

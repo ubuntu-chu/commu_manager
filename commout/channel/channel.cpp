@@ -38,7 +38,8 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
             vec_ret_.push_back(pdata[i]);
         }
     }
-    status_                           = iflag;
+    status_                             = iflag;
+    frame_arrived_                      = true;
     condition_.notify();
     LOG_TRACE << "condition ocurred, wake up";
 
@@ -146,6 +147,10 @@ bool channel::handle_timer(void)
 
 bool channel::on_read(const char *pdata, int len, int flag)
 {
+    if (false == can_receive()){
+        LOG_INFO << "drop data because half duplex in send";
+        return false;
+    }
     utils::log_binary_buf("channel::on_read", pdata, len);
 	if (NULL != protocol_){
 	    return protocol_->read_frchannel(pdata, len, flag);

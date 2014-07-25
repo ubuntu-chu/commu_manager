@@ -81,6 +81,20 @@ public:
         return i;
     }
 
+    int io_type_get(void) const
+    {
+        return io_type_;
+    }
+    bool io_type_set(int type)
+    {
+        if (type >= IO_TYPE_END){
+            return false;
+        }
+        io_type_    = type;
+
+        return true;
+    }
+
     list_head_t * device_list_head_get(void)
     {
         return &device_head_;
@@ -93,6 +107,7 @@ private:
 	char   			type_[def_NAME_MAX_LEN];
 	char   			map_[def_NAME_MAX_LEN];//映射资源
 
+	int             io_type_;
 	list_head_t     device_head_;
 };
 
@@ -144,6 +159,14 @@ public:
 
 	void power_node_set(power_node *power_node){power_node_ = power_node;}
 	power_node * power_node_get(void){return power_node_;}
+
+	bool power_ctrl(char value)
+	{
+	    if (NULL == power_node_){
+	        return false;
+	    }
+	    return power_node_->power_ctrl(value);
+	}
 
     int bps_set(int bps)
     {

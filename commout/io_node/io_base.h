@@ -46,6 +46,16 @@ public:
 
     void send_status_end(void);
 
+    bool power_on(void)
+    {
+        return power_ctrl('1');
+    }
+    bool power_off(void)
+    {
+        return power_ctrl('0');
+    }
+	bool power_ctrl(char value);
+
 protected:
 
     int                 m_nLastSend; //最近周期内发送的报文字节数

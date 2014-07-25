@@ -7,6 +7,7 @@
 #include "./io_node/inner_client.h"
 #include "./io_node/inner_server.h"
 #include "rfid.h"
+#include <protocol_rfid.h>
 
 using std::string;
 
@@ -92,10 +93,12 @@ int main(int argc, char**argv)
                 channel *pchannel = channel::channel_create(pio_node);
                 channel_vector.push_back(pchannel);
 //                channel_vector.push_back(channel::channel_create(pio_node));
-                if (pchannel->contain_protocol("rfid")){
+                if (pchannel->contain_protocol(def_PROTOCOL_RFID_NAME)){
 
                     device_rfid.channel_set(pchannel);
                 }
+                //开启此通道电源
+                pchannel->power_on();
             }
         }
     }
@@ -104,7 +107,7 @@ int main(int argc, char**argv)
     for(vecotr<boost::shared_ptr<channel> >::iterator iter = channel_vector.begin();
 //    for(boost::ptr_vector<channel>::iterator iter = channel_vector.begin();
             iter != channel_vector.end(); ++iter){
-        if (iter->contain_protocol("rfid")){
+        if (iter->contain_protocol(def_PROTOCOL_RFID_NAME)){
 
             device_rfid.channel_set(iter.get());
         }

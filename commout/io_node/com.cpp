@@ -172,7 +172,7 @@ int dev_open(const char *ppath)
     fd = open(ppath, O_RDWR | O_NOCTTY | O_NDELAY | O_SYNC);
 
     if (fd < 0){
-        LOG_ERROR << "open device:" << ppath << "failed\n";
+        LOG_ERROR << "open device: " << ppath << " failed\n";
     }
 
     return fd;

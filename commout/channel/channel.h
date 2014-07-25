@@ -59,7 +59,8 @@ class channel:boost::noncopyable{
 public:
     channel():mutex_(),
         condition_(mutex_),
-        status_(0){}
+        status_(0),
+        frame_arrived_(0){}
     ~channel(){}
 
     //初始化通信介质
@@ -112,10 +113,35 @@ public:
     {
         return runinfo_.m_bsend;
     }
+    bool can_receive(void)
+    {
+        if ((enum_WORK_TYPE_HALF_DUPLEX == duplex_type_)
+                && (true == runinfo_.m_bsend)){
+            return false;
+        }
+
+        return true;
+    }
+
+    bool power_on(void)
+    {
+        return power_ctrl('1');
+    }
+    bool power_off(void)
+    {
+        return power_ctrl('0');
+    }
 
 private:
     int write(vector<char> &vec);
     int write_sync(vector<char> &vec);
+	bool power_ctrl(char value)
+	{
+	    if (NULL == io_base_){
+	        return false;
+	    }
+        return io_base_->power_ctrl(value);
+	}
 
 
     channel_runinfo         runinfo_;
@@ -130,6 +156,7 @@ private:
     mutable MutexLock      mutex_;
     Condition               condition_;
     int                    status_;
+    int                    frame_arrived_;
     vector<char>            vec_ret_;
 };
 

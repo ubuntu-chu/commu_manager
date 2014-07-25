@@ -57,9 +57,8 @@ bool io_base::on_read(const char *pdata, int len, int flag)
             pio_node_->name_get(), "io_base::on_read");
     utils::log_binary_buf(log_buf, pdata, len);
     if (NULL != pchannel_){
-        if ((enum_WORK_TYPE_HALF_DUPLEX == pchannel_->duplextype_get())
-                && (true == pchannel_->send_status_get())){
-            LOG_ERROR << "drop data because half duplex in send";
+        if (false == pchannel_->can_receive()){
+            LOG_INFO << "drop data because half duplex in send";
             return false;
         }
         return pchannel_->on_read(pdata, len, flag);
@@ -75,3 +74,21 @@ void io_base::send_status_end(void)
 }
 
 
+bool io_base::power_ctrl(char value)
+{
+    bool rt;
+
+    if (IO_TYPE_EXT_COM != pio_node_->io_type_get()){
+        return false;
+    }
+    io_com_ext_node *pio_com_ext_node =
+            reinterpret_cast<io_com_ext_node *>(const_cast<io_node *>(pio_node_));
+    rt                  = pio_com_ext_node->power_ctrl(value);
+    if (false == rt){
+        const char *msg[]     = {" power_on", " power_off"};
+
+        LOG_INFO << pio_node_->name_get() << " io_base::" << __func__ << msg[value - '0'] << " failed!";
+    }
+
+    return rt;
+}
