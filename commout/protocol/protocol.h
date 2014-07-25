@@ -92,11 +92,11 @@ public:
 protected:
 	Buffer              inbuffer_;
 	Buffer              outbuffer_;
+    channel             *pchannel_;
 
 private:
     string              name_;
 	string   			describe_;
-    channel             *pchannel_;
 
     boost::shared_ptr<protocol_info> info_;
 	protocol_runinfo    runinfo_;

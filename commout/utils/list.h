@@ -9,6 +9,8 @@ extern "C" {
 #define NULL                            ((void *)0)
 #endif
 
+#define OFFSET(Struct, Field)                           ((unsigned int)(unsigned char*)&(((Struct *)0)->Field))
+
 #define list_entry(node, type, member) \
                                                                 ((type *)((char *)(node) - (unsigned int)(&((type *)0)->member)))
 

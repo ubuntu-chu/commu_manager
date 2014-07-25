@@ -323,6 +323,84 @@ bool xml_AddNode_Attribute(TiXmlElement *pRootEle, std::string strParNodeName,
         return false;
 }
 
+int config_relative_set(void)
+{
+        //将工程配置信息写入到共享内存后 重新更新引用的值
+	project_config	*pproject_config     = t_project_datum.pproject_config_;
+//	power_config 	&power_conf	        = pproject_config->power_config_get();
+//	process_config 	&process_conf	    = pproject_config->process_config_get();
+//	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
+	io_config       &io_conf	        = pproject_config->io_config_get();
+	device_config   &device_conf	    = pproject_config->device_config_get();
+    //建立起通道与设备之间的归属关系
+    //将设备挂在到通道的设备链表上   匹配依据是设备的io与通道的name相等
+	int             i, j;
+	int             ii, jj;
+	int             io_vector_no, device_vector_no;
+    device_node     *pdevice_node;
+    io_node         *pio_node;
+    list_head_t     *phead;
+    list_node_t     *pnode;
+
+    //将设备挂接到所属io_node的设备链表上
+    for (ii = device_conf.device_type_start(); ii < device_conf.device_type_end(); ii++){
+        device_vector_no               = device_conf.device_vector_no_get(ii);
+        for (jj = 0; jj < device_vector_no; jj++){
+            pdevice_node               = device_conf.device_vector_get(ii, jj);
+            for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
+                io_vector_no                    = io_conf.io_vector_no_get(i);
+                for (j = 0; j < io_vector_no; j++){
+                    pio_node                    = io_conf.io_vector_get(i, j);
+                    //将设备挂接到所属io_node的设备链表上
+                    if (0 == strcmp(pdevice_node->io_get(), pio_node->name_get())){
+                        phead                   = pio_node->device_list_head_get();
+                        pnode                   = pdevice_node->node_get();
+                        list_insert_after(phead, pnode);
+                    }
+                }
+            }
+        }
+    }
+
+#if 0
+    device_node *pdevice_node;
+    list_node_t *pos;
+    //获取此通道下io下所挂接设备
+    //同一个io下所有设备的class type必须相同
+    list_head_t * plist_head;
+
+    //检查每个io_node下所挂载设备的正确性
+    for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
+        io_vector_no                    = io_conf.io_vector_no_get(i);
+        for (j = 0; j < io_vector_no; j++){
+            pio_node                    = io_conf.io_vector_get(i, j);
+            plist_head                  = pio_node->device_list_head_get();
+            //io_node下设备链表为空  则不进行检查
+            if (list_empty(plist_head)){
+                continue;
+            }
+            list_for_each(pos, plist_head){
+                pdevice_node    = list_entry_offset(pos, class device_node, device_node::node_offset_get());
+            }
+        }
+    }
+#endif
+
+    io_node         *pio_node_map;
+    //处理io_node之间的map关系
+    for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
+        io_vector_no                    = io_conf.io_vector_no_get(i);
+        for (j = 0; j < io_vector_no; j++){
+            pio_node                    = io_conf.io_vector_get(i, j);
+            if (NULL != (pio_node_map = io_conf.io_node_find(pio_node->map_get()))){
+                pio_node->io_node_map_set(pio_node_map);
+            }
+        }
+    }
+
+
+    return 0;
+}
 
 int xml_parse(const char *path)
 {
@@ -575,6 +653,8 @@ int xml_parse(const char *path)
                 pnode->vender_set(pAttr->Value());
             }else if (0 == strcmp(def_ID_STRING , pAttr->Name())){
                 pnode->id_set(atoi(pAttr->Value()));
+            }else if (0 == strcmp(def_CLASS_TYPE_STRING , pAttr->Name())){
+                pnode->class_type_set(atoi(pAttr->Value()));
             }else if (0 == strcmp(def_IO_STRING , pAttr->Name())){
                 pnode->io_set(pAttr->Value());
             }else if (0 == strcmp(def_TYPE_STRING , pAttr->Name())){
@@ -602,40 +682,13 @@ int xml_parse(const char *path)
         device_conf.device_vector_no_inc(type);
     }
 
-    //建立起通道与设备之间的归属关系
-    //将设备挂在到通道的设备链表上   匹配依据是设备的io与通道的name相等
-	int             i, j;
-	int             ii, jj;
-	int             io_vector_no, device_vector_no;
-    device_node     *pdevice_node;
-    io_node         *pio_node;
-    list_head_t     *phead;
-    list_node_t     *pnode;
-
-    for (ii = device_conf.device_type_start(); ii < device_conf.device_type_end(); ii++){
-        device_vector_no               = device_conf.device_vector_no_get(ii);
-        for (jj = 0; jj < device_vector_no; jj++){
-            pdevice_node               = device_conf.device_vector_get(ii, jj);
-            for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
-                io_vector_no                    = io_conf.io_vector_no_get(i);
-                for (j = 0; j < io_vector_no; j++){
-                    pio_node                    = io_conf.io_vector_get(i, j);
-                    //查找io配置中属于当前进程的io_node
-                    if (0 == strcmp(pdevice_node->io_get(), pio_node->name_get())){
-                        phead                   = pio_node->device_list_head_get();
-                        pnode                   = pdevice_node->node_get();
-                        list_insert_after(phead, pnode);
-                    }
-                }
-            }
-        }
-    }
-
     //将工程配置信息写入到共享内存中
     LOG_INFO << "size = " << sizeof(t_project_config);
 	//*reinterpret_cast<project_config *>(pshmem_addr) 	    = t_project_config;
     memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
     t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);
+
+    config_relative_set();
 
 	return 0;
 }

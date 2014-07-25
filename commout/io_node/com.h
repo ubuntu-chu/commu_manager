@@ -9,7 +9,7 @@ using namespace muduo::net;
 
 class com: public io_base, boost::noncopyable {
 public:
-    com(EventLoop* loop, const char *name, const io_node *pio_node = NULL);
+    com(EventLoop* loop, const char *name, io_node *pio_node = NULL);
 
     //初始化通信介质
     virtual bool init(void);

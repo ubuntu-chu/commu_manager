@@ -1,4 +1,7 @@
 #include "protocol_raw.h"
+#include <io_base.h>
+#include <channel.h>
+#include <device_node.h>
 
 uint16_t          seq_id = 0;
 
@@ -34,16 +37,26 @@ void protocol_mac::uninit()
 //打包函数
 int  protocol_mac::package_aframe(char* pdata, int len)
 {
-    frame_ctl_t *pframe_ctl     = reinterpret_cast<frame_ctl_t *>(pdata);
+//    frame_ctl_t *pframe_ctl     = reinterpret_cast<frame_ctl_t *>(pdata);
+    frame_ctl_t t_frame_ctl;
+    frame_ctl_t *pframe_ctl     = &t_frame_ctl;
     uint8 ptr[1000];
     uint16_t val;
     uint16_t val_len = 0x00;
     uint8_t *tmp_ptr = ptr;
     mac_frame_t* mac_frm_ptr        = &(pframe_ctl->mac_frm_ptr);
     app_frame_t* app_frm_ptr        = &(pframe_ctl->app_frm_ptr);
-    uint8_t* pData                  = pframe_ctl->data_ptr;
+//    uint8_t* pData                  = pframe_ctl->data_ptr;
+    uint8_t* pData;
+
+    //可能会存在pdata所执行内存字节对齐问题
+    memcpy(reinterpret_cast<void *>(&t_frame_ctl), reinterpret_cast<const void *>(pdata),
+            sizeof(frame_ctl_t));
 
     if (app_frm_ptr->len > 0x00) {
+
+        //重新指定pData地址
+        pData                       = reinterpret_cast<uint8 *>(pdata + sizeof(frame_ctl_t));
 
         mac_frm_ptr->len = def_FRAME_MAC_LEN + def_FRAME_APP_HEAD_LEN
                 + def_FRAME_PACK_IDEX_LEN         // len assign
@@ -73,6 +86,7 @@ int  protocol_mac::package_aframe(char* pdata, int len)
                 + app_frm_ptr->len;
 
     } else {
+        //数据区为空的时候  不包含包索引、数据长度、数据区
         mac_frm_ptr->len = def_FRAME_MAC_LEN + def_FRAME_APP_HEAD_LEN
                 + def_FRAME_CK_LEN + def_FRAME_DELIMITER_LEN;
 
@@ -176,6 +190,20 @@ bool protocol_mac::handle_timer(void)
 
 void protocol_mac::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, uint8 total, uint8 index, uint8 func_code, uint8 *pbuf, uint16 len)
 {
+    io_base *pio_base           = pchannel_->io_base_get();
+    io_node *pio_node           = pio_base->io_node_get();
+    io_node *pio_node_map       = pio_node->io_node_map_get();
+
+    io_com_ext_node *pio_com_ext_node =
+            reinterpret_cast<io_com_ext_node *>(const_cast<io_node *>(pio_node_map));
+    device_node  *pdevice_node;
+
+    //获取此通道下io下所挂接设备
+    //同一个io下所有设备的class type必须相同
+    list_head_t * plist_head  = pio_com_ext_node->device_list_head_get();
+
+    pdevice_node    = list_entry_offset(plist_head->m_next, class device_node, device_node::node_offset_get());
+
     memset(pfrm_ctl, 0, sizeof(frame_ctl_t));
 
     pfrm_ctl->mac_frm_ptr.delimiter_start = def_FRAME_delimiter;
@@ -183,12 +211,12 @@ void protocol_mac::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, u
 
     pfrm_ctl->mac_frm_ptr.ctl       = frm_ctl;
 
-    pfrm_ctl->mac_frm_ptr.time = 0;
+    pfrm_ctl->mac_frm_ptr.time = time(NULL);
 
-    pfrm_ctl->mac_frm_ptr.dev_adr = 0;
-    pfrm_ctl->mac_frm_ptr.sen_adr = 0;
+    pfrm_ctl->mac_frm_ptr.dev_adr = pio_com_ext_node->device_addr_get();
+    pfrm_ctl->mac_frm_ptr.sen_adr = pio_com_ext_node->sensor_addr_get();
 
-    pfrm_ctl->mac_frm_ptr.type  = 0;
+    pfrm_ctl->mac_frm_ptr.type  = pdevice_node->class_type_get();
     pfrm_ctl->app_frm_ptr.fun   = func_code;
 
     pfrm_ctl->app_frm_ptr.sum   = total;
@@ -213,13 +241,4 @@ mac_frm_ctrl_t protocol_mac::mac_frm_ctrl_init(uint8 ack, uint8 dir, uint8 ack_r
 
 
 
-int protocol_mac::package_send(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pbuf, uint16 len)
-{
-    frame_ctl_t t_frm_ctl;
-
-    frm_ctl_init(&t_frm_ctl, frm_ctl, 1, 0, func_code, (uint8 *)pbuf, len);
-    write_tochannel((char *)&t_frm_ctl, sizeof(frame_ctl_t));
-
-    return 0;
-}
 

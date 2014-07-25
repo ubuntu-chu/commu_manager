@@ -41,6 +41,9 @@ public:
 	void id_set(const int &id){id_ = id;}
 	int &id_get(void){return id_;}
 
+	void class_type_set(const int &class_type){class_type_ = class_type;}
+	int &class_type_get(void){return class_type_;}
+
     static int device_type_get(const char *type_str)
     {
         int     i                  = DEVICE_TYPE_BEGIN;
@@ -58,6 +61,10 @@ public:
     {
         return &node_;
     }
+    static int node_offset_get(void)
+    {
+        return OFFSET(class device_node, node_);
+    }
 private:
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];
@@ -65,6 +72,7 @@ private:
 	char   			type_[def_NAME_MAX_LEN];
 	char 			io_[def_NAME_MAX_LEN];
 	int             id_;
+	int             class_type_;
 
 	list_node_t     node_;
 };

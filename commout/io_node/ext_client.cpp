@@ -3,7 +3,7 @@
 
 
 ext_client::ext_client(EventLoop* loop,
-        const InetAddress& listenAddr, const char *name, const io_node *pio_node) :
+        const InetAddress& listenAddr, const char *name, io_node *pio_node) :
         io_base(pio_node), loop_(loop), client_(loop, listenAddr, name)
 {
     io_tcp_ext_client_node *pio_tcp_ext_client_node =
@@ -16,7 +16,7 @@ ext_client::ext_client(EventLoop* loop,
             boost::bind(&ext_client::onConnection, this, _1));
     client_.setMessageCallback(
             boost::bind(&ext_client::onMessage, this, _1, _2, _3));
-    // client_.enableRetry();
+    client_.enableRetry();
 }
 
 

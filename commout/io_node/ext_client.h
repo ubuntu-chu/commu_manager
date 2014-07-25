@@ -10,7 +10,7 @@ using namespace muduo::net;
 class ext_client: public io_base, boost::noncopyable {
 public:
     ext_client(EventLoop* loop, const InetAddress& listenAddr,
-            const char *name, const io_node *pio_node = NULL);
+            const char *name, io_node *pio_node = NULL);
 
     //连接通信介质
     virtual bool connect(bool brelink = true)
@@ -31,10 +31,13 @@ public:
     //向通道写报文
     virtual int send_data(char *pdata, size_t len)
     {
+        int actual_len              = 0;
         MutexLockGuard lock(mutex_);
         if (connection_){
           connection_->send(pdata, len);
+          actual_len                = len;
         }
+        send_status_end(actual_len);
 
         return len;
     }

@@ -228,7 +228,7 @@ int dev_write(int fd, const char *str, int len){
     return tot_n;
 }
 
-com::com(EventLoop* loop, const char *name, const io_node *pio_node) :
+com::com(EventLoop* loop, const char *name, io_node *pio_node) :
         io_base(pio_node), loop_(loop)
 {
     LOG_INFO << "IO_TYPE_EXT_COM create; name = " << name;
@@ -305,8 +305,7 @@ int com::send_data(char *pdata, size_t len)
 
 int com::_send_data(char *pdata, size_t len)
 {
-    dev_write(fd_, pdata, len);
-    send_status_end();
+    send_status_end(dev_write(fd_, pdata, len));
 
     return len;
 }

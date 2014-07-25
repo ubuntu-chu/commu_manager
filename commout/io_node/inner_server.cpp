@@ -2,7 +2,7 @@
 
 
 inner_server::inner_server(EventLoop* loop,
-        const InetAddress& listenAddr, const char *name, const io_node *pio_node) :
+        const InetAddress& listenAddr, const char *name, io_node *pio_node) :
         io_base(pio_node), server_(loop, listenAddr, name)
 {
     LOG_INFO << "IO_TYPE_INNER_SERVER create; serverip = " << listenAddr.toIpPort();

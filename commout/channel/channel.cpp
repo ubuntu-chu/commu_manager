@@ -8,11 +8,13 @@
 //初始化通信介质
 bool channel::init(void)
 {
-    runinfo_.m_bStatus          = true;
+    runinfo_.m_bStatus                  = true;
 	if ((NULL == protocol_) || (NULL == io_base_)){
 	    return false;
 	}
-	duplex_type_                = io_base_->duplextype_get();
+	duplex_type_                        = io_base_->duplextype_get();
+	status_                             = 0;
+    frame_arrived_                      = false;
     protocol_->init();
 	return io_base_->init();
 }
@@ -38,18 +40,37 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
             vec_ret_.push_back(pdata[i]);
         }
     }
-    status_                             = iflag;
     frame_arrived_                      = true;
-    condition_.notify();
+    //判断之前是否调用过 write_sync_inloop函数
+    if (1 == status_){
+        status_                         = iflag;
+        condition_.notify();
+    }
     LOG_TRACE << "condition ocurred, wake up";
 
     return true;
 }
 
+bool channel::fetch(vector<char> &vec)
+{
+    if (frame_arrived_ == true){
+        vec                             = vec_ret_;
+        vec_ret_.clear();
+        frame_arrived_                  = false;
+
+        return true;
+    }
+
+    return false;
+}
+
 int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
 {
+    int     rt;
+
     MutexLockGuard lock(mutex_);
-    status_                           = 1;
+    status_                             = 1;
+    frame_arrived_                      = false;
     vec_ret_.clear();
     LOG_TRACE << "condition wait start with " << wait_time << " sec";
     event_loop_->runInLoop(boost::bind(&channel::write_sync, this, vec));
@@ -65,7 +86,11 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
         *ppvec_ret                      = &vec_ret_;
     }
 
-    return status_;
+    rt                                  = status_;
+    //恢复默认值
+    status_                             = 0;
+
+    return rt;
 }
 //向通信介质写报文
 int channel::write_sync(vector<char> &vec)
@@ -82,6 +107,7 @@ int channel::write_sync(vector<char> &vec)
 
 int channel::write_inloop(vector<char> &vec)
 {
+    //此处bind对vec是拷贝行为
     event_loop_->runInLoop(boost::bind(&channel::write, this, vec));
 
     return 0;

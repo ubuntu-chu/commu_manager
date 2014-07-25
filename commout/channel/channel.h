@@ -69,6 +69,11 @@ public:
     //反初始化
     bool uninit();
 
+    //获取函数
+    //返回值： false 表示通道暂未接收到数据帧
+    //       true   表示通道已接受到数据帧    数据帧通过容器返回
+    bool fetch(vector<char> &vec);
+
     //向通信介质写报文   同步版本
     //返回值： > 0  执行超时
     //       = 0  执行成功
@@ -130,6 +135,15 @@ public:
     bool power_off(void)
     {
         return power_ctrl('0');
+    }
+
+    protocol *protocol_get(void)
+    {
+        return protocol_.get();
+    }
+    io_base *io_base_get(void)
+    {
+        return io_base_.get();
     }
 
 private:

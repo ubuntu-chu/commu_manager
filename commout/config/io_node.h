@@ -35,7 +35,7 @@ static const char io_node_no[IO_TYPE_END] = {
 
 class io_node{
 public:
-	io_node(){list_init(&device_head_);}
+	io_node():pio_node_map_(NULL){list_init(&device_head_);}
 	~io_node(){}
 
 	void name_set(const char *name){strncpy(name_, name, sizeof(name_));}
@@ -55,6 +55,9 @@ public:
 
 	void map_set(const char *map){strncpy(map_, map, sizeof(map_));}
 	const char *map_get(void){return map_;}
+
+	void io_node_map_set(io_node *pnode){pio_node_map_ = pnode;}
+	io_node *io_node_map_get(void){return pio_node_map_;}
 
     int duplextype_get(void) const
     {
@@ -109,6 +112,7 @@ private:
 
 	int             io_type_;
 	list_head_t     device_head_;
+	io_node         *pio_node_map_;
 };
 
 class io_tcp_server_node:public io_node{
@@ -271,12 +275,12 @@ public:
         int     value;
 
         value   = strtoul(device_addr, NULL, 16);
-        value   = htobe32(value);
-        memcpy(device_addr_, &value, sizeof(device_addr_));
+//        value   = htobe32(value);
+        device_addr_    = value;
 
         return 0;
     }
-    const char *device_addr_get(void)
+    uint32 device_addr_get(void)
     {
         return device_addr_;
     }
@@ -287,19 +291,19 @@ public:
         int     value;
 
         value   = strtoul(sensor_addr, NULL, 16);
-        value   = htobe32(value);
-        memcpy(sensor_addr_, &value, sizeof(sensor_addr_));
+//        value   = htobe32(value);
+        sensor_addr_    = value;
 
         return 0;
     }
-    const char *sensor_addr_get(void)
+    uint32 sensor_addr_get(void)
     {
         return sensor_addr_;
     }
     int sensor_addr_no_get(void){return sizeof(sensor_addr_);}
 private:
-	char 			device_addr_[def_DEVICE_ADDR_CHAR_NO];
-	char 			sensor_addr_[def_SENSOR_ADDR_CHAR_NO];
+	uint32 			device_addr_;
+	uint32 			sensor_addr_;
 };
 
 class io_config{
@@ -387,6 +391,25 @@ public:
 
     int io_type_start(void){return IO_TYPE_BEGIN;}
     int io_type_end(void){return IO_TYPE_END;}
+
+    io_node *io_node_find(const char *name)
+    {
+        int         i, j, io_vector_no;
+        io_node     *pio_node;
+
+        for (i = io_type_start(); i < io_type_end(); i++){
+            io_vector_no                    = io_vector_no_get(i);
+            for (j = 0; j < io_vector_no; j++){
+                pio_node                    = io_vector_get(i, j);
+                //查找io配置中属于当前进程的io_node
+                if (0 == strcmp(name, pio_node->name_get())){
+                    return pio_node;
+                }
+            }
+        }
+
+        return NULL;
+    }
 private:
     char   			    describe_[def_DESCRIBE_MAX_LEN];
 	unsigned char       index_[IO_TYPE_END];

@@ -9,7 +9,7 @@ class channel;
 //通信基类
 class io_base{
 public:
-    io_base(const io_node *pio_node):pio_node_(pio_node){}
+    io_base(io_node *pio_node):pio_node_(pio_node){}
     virtual ~io_base(){}
 
     //初始化通信介质
@@ -44,7 +44,7 @@ public:
         return pio_node_->duplextype_get();
     }
 
-    void send_status_end(void);
+    void send_status_end(int len);
 
     bool power_on(void)
     {
@@ -56,12 +56,17 @@ public:
     }
 	bool power_ctrl(char value);
 
+    io_node  *io_node_get(void)
+    {
+        return pio_node_;
+    }
 protected:
 
     int                 m_nLastSend; //最近周期内发送的报文字节数
     int                 m_nLastRcv;  //最近周期内收到的报文字节数
+    int                 len_;
 
-    const io_node      *pio_node_;
+    io_node             *pio_node_;
     channel             *pchannel_;
 private:
 };

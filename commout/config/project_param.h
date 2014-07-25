@@ -8,6 +8,7 @@
 #define    def_PATH_STRING         ("path")
 #define    def_VENDER_STRING       ("vender")
 #define    def_ID_STRING           ("id")
+#define    def_CLASS_TYPE_STRING   ("class")
 
 #define    def_POWER_STRING        ("power")
 #define    def_PROCESS_STRING      ("process")

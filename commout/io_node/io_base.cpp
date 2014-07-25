@@ -34,7 +34,8 @@ int io_base::send_package(char *pdata, size_t len)
 {
     char log_buf[200];
 
-    m_nLastSend += len;
+    m_nLastSend                 += len;
+    len_                        = len;
     snprintf(log_buf, sizeof(log_buf), "io-name[%s], io-func[%s]",
             pio_node_->name_get(), "io_base::send_package");
     utils::log_binary_buf(log_buf, pdata, len);
@@ -66,10 +67,15 @@ bool io_base::on_read(const char *pdata, int len, int flag)
     return false;
 }
 
-void io_base::send_status_end(void)
+void io_base::send_status_end(int len)
 {
     if (NULL != pchannel_){
-        return pchannel_->send_status_set(false);
+        pchannel_->send_status_set(false);
+    }
+    if (len != len_){
+        LOG_INFO << pio_node_->name_get() << " io_base::" << __func__
+                << " send failed!; expected [" << len_ << "] actual ["
+                << len << "]";
     }
 }
 

@@ -10,7 +10,7 @@ using namespace muduo::net;
 class inner_client: public io_base, boost::noncopyable {
 public:
     inner_client(EventLoop* loop, const InetAddress& listenAddr,
-            const char *name, const io_node *pio_node = NULL);
+            const char *name, io_node *pio_node = NULL);
 
     //连接通信介质
     virtual bool connect(bool brelink = true)

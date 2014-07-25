@@ -11,7 +11,7 @@ using std::string;
 class inner_server: public io_base, boost::noncopyable {
 public:
     inner_server(EventLoop* loop, const InetAddress& listenAddr,
-            const char *name, const io_node *pio_node = NULL);
+            const char *name, io_node *pio_node = NULL);
     void start();  // calls server_.start();
 
     //初始化通信介质

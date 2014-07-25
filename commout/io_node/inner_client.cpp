@@ -2,7 +2,7 @@
 
 
 inner_client::inner_client(EventLoop* loop,
-        const InetAddress& listenAddr, const char *name, const io_node *pio_node) :
+        const InetAddress& listenAddr, const char *name,  io_node *pio_node) :
         io_base(pio_node), loop_(loop), client_(loop, listenAddr, name)
 {
     io_tcp_client_node *pio_tcp_client_node =
