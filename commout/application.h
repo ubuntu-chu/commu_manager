@@ -1,5 +1,5 @@
-#ifndef _COMMOUT_H
-#define _COMMOUT_H
+#ifndef _APPLICATION_H
+#define _APPLICATION_H
 
 #include "rfid.h"
 

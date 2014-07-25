@@ -9,7 +9,7 @@
 #include "rfid.h"
 #include "net.h"
 #include <protocol_rfid.h>
-#include "commout.h"
+#include "application.h"
 
 using std::string;
 
