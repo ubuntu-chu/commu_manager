@@ -1,8 +1,10 @@
 #ifndef _APPLICATION_H
 #define _APPLICATION_H
 
+#include <includes/includes.h>
 #include "rfid.h"
 
+#define         TERMINAL_ABILITY_NONE               (0x00)
 #define         TERMINAL_ABILITY_R_DATA             (0x01)
 #define         TERMINAL_ABILITY_W_DATA             (0x02)
 #define         TERMINAL_ABILITY_W_EPC              (0x04)
@@ -36,17 +38,29 @@ struct app_rfidinfo{
     uint8               m_reserved[2];
 };
 
-struct _app_runinfo_{
-    CDevice_Rfid       *m_pdevice_rfid;
-    CDevice_net        *m_pdevice_net;
+enum {
+    enum_APP_STATUS_INIT = 0,
+    enum_APP_STATUS_RUN,
+    enum_APP_STATUS_EXIT,
+};
 
-    struct reader_info  *m_readerinfo;
-    struct epc_info     m_epcinfo;
-    struct app_rfidinfo m_rfidinfo;
-    uint8               m_ability;
-    uint8               m_mode;
-    uint8               m_status;
-    uint8               m_reader_numbs;    //通道下所挂接设备数量
+struct _app_runinfo_{
+    CDevice_Rfid                        *m_pdevice_rfid;
+    CDevice_net                         *m_pdevice_net;
+
+    int                                 timer_fd_;
+
+    vector<struct reader_info>         m_readerinfo_vec_;
+    struct epc_info                     m_epcinfo;
+    struct app_rfidinfo                 m_rfidinfo;
+    uint8                               m_ability;
+    uint8                               m_mode;
+    volatile sig_atomic_t              m_status;
+    uint8                               m_reader_numbs;    //通道下所挂接设备数量
+    uint8                               m_reader_online_numbs;    //通道下所挂接设备数量
+
+    boost::ptr_vector<channel>          channel_vector_;
+
 };
 typedef struct _app_runinfo_ app_runinfo_t;
 
@@ -73,6 +87,10 @@ private:
     portBASE_TYPE device_status_send(void);
 
     portBASE_TYPE protocol_rfid_read(void);
+
+    bool timer_timeout_occured(void);
+
+    int rfid_device_id_get(int index);
 
 
     static CApplication     *m_pcapplicaiton;

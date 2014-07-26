@@ -65,6 +65,17 @@ public:
     {
         return OFFSET(class device_node, node_);
     }
+    static device_node *device_entry(list_node_t *pnode)
+    {
+        device_node             *pdevice_node;
+
+        if (NULL == pnode){
+            return NULL;
+        }
+        pdevice_node    = list_entry_offset(pnode, class device_node, device_node::node_offset_get());
+
+        return pdevice_node;
+    }
 private:
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];

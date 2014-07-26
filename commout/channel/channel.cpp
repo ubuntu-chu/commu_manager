@@ -274,4 +274,34 @@ bool channel::contain_protocol(const char *name)
     return false;
 }
 
+int channel::device_no_get(void)
+{
+    int no                          = 0;
+
+    list_node_t *pos;
+    //获取此通道下io下所挂接设备
+    list_head_t * plist_head;
+
+    if (NULL == io_base_){
+        return no;
+    }
+    plist_head                      = io_base_->io_node_get()->device_list_head_get();
+    list_for_each(pos, plist_head){
+        no++;
+    }
+
+    return no;
+}
+
+list_head_t *channel::device_list_head_get(void)
+{
+    if (NULL == io_base_){
+        return NULL;
+    }
+    list_head_t * plist_head    = io_base_->io_node_get()->device_list_head_get();
+
+    return plist_head;
+}
+
+
 

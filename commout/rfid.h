@@ -55,6 +55,9 @@ struct reader_info{
 	//query time
 	uint8			m_scntm;
 	enum freqband   m_freqband;
+
+	uint8           m_id_;              //阅读器id
+	uint8           m_exist_;           //在线信息
 };
 
 enum memory{
@@ -104,7 +107,10 @@ public:
 	portBASE_TYPE max_wait_time_set(uint8 wait_time);
 	static portBASE_TYPE epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc);
 
+	list_head_t *device_list_head_get();
+
 	void channel_set(channel *pchannel){pchannel_    = pchannel;}
+	channel *channel_get(void){return pchannel_;}
 private:
     CDevice_Rfid(const CDevice_Rfid &other);
     CDevice_Rfid &operator =(const CDevice_Rfid &other);

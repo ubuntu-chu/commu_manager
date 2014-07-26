@@ -342,11 +342,22 @@ int config_relative_set(void)
     list_head_t     *phead;
     list_node_t     *pnode;
 
+    //初始化io_node上设备链表
+    for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
+        io_vector_no                    = io_conf.io_vector_no_get(i);
+        for (j = 0; j < io_vector_no; j++){
+            pio_node                    = io_conf.io_vector_get(i, j);
+            phead                       = pio_node->device_list_head_get();
+            list_init(phead);
+        }
+    }
     //将设备挂接到所属io_node的设备链表上
     for (ii = device_conf.device_type_start(); ii < device_conf.device_type_end(); ii++){
         device_vector_no               = device_conf.device_vector_no_get(ii);
         for (jj = 0; jj < device_vector_no; jj++){
             pdevice_node               = device_conf.device_vector_get(ii, jj);
+            pnode                      = pdevice_node->node_get();
+            list_init(pnode);
             for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
                 io_vector_no                    = io_conf.io_vector_no_get(i);
                 for (j = 0; j < io_vector_no; j++){
@@ -354,7 +365,6 @@ int config_relative_set(void)
                     //将设备挂接到所属io_node的设备链表上
                     if (0 == strcmp(pdevice_node->io_get(), pio_node->name_get())){
                         phead                   = pio_node->device_list_head_get();
-                        pnode                   = pdevice_node->node_get();
                         list_insert_after(phead, pnode);
                     }
                 }

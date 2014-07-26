@@ -2,6 +2,7 @@
 #define _CHANNEL_H
 
 #include <io_node.h>
+#include <device_node.h>
 #include <includes/includes.h>
 #include <io_base.h>
 #include <protocol.h>
@@ -145,6 +146,10 @@ public:
     {
         return io_base_.get();
     }
+
+    //获取此通道的io_base下所挂在设备的数目
+    int device_no_get(void);
+    list_head_t *device_list_head_get(void);
 
 private:
     int write(vector<char> &vec);

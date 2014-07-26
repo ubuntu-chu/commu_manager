@@ -260,3 +260,8 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
 	return 0;
 }
 
+list_head_t *CDevice_Rfid::device_list_head_get()
+{
+    return pchannel_->device_list_head_get();
+}
+
