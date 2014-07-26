@@ -81,7 +81,7 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }
@@ -120,7 +120,7 @@ portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }
@@ -168,7 +168,7 @@ portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }
@@ -189,7 +189,7 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }
@@ -226,7 +226,7 @@ portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }
@@ -252,7 +252,7 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
     //调用通道写函数
     rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
-    if (0 != rt){
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
         return -1;
     }

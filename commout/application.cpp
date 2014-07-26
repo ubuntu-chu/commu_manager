@@ -141,12 +141,13 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
         LOG_SYSFATAL << "Failed in timerfd_create";
     }
 	//设定1s循环定时
+
     struct itimerspec new_value;
 
-    new_value.it_value.tv_sec               = 1;
+    new_value.it_value.tv_sec               = t_project_datum.heart_beat_interval_get();
     new_value.it_value.tv_nsec              = 0;
-    new_value.it_interval.tv_sec            = 1;
-    new_value.it_interval.tv_nsec           = 0;
+    new_value.it_interval.tv_sec            = new_value.it_value.tv_sec;
+    new_value.it_interval.tv_nsec           = new_value.it_value.tv_nsec;
 
     if (::timerfd_settime(m_app_runinfo.timer_fd_, 0, &new_value, NULL) == -1){
         LOG_SYSERR << "timerfd_settime()";
@@ -257,8 +258,69 @@ portBASE_TYPE CApplication::readerrfid_init(void)
 
 portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
 {
+    CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
+    uint8           rsp                     = RSP_OK;
+    uint8           i;
+    uint8           reader_id;
+    uint8           *pdata;
+    uint16          len                     = *plen;
 
-    return 0;
+    if (pbuf[1] != m_app_runinfo.m_reader_numbs){
+        rsp                                 = RSP_INVALID_PARAM;
+        goto quit;
+    }
+    //len check
+    if (len != (2 + 3*(pbuf[1]))){
+        rsp                                 = RSP_INVALID_PARAM_LEN;
+        goto quit;
+    }
+
+    pbuf[0]                                 &= (TERMINAL_ABILITY_R_DATA|TERMINAL_ABILITY_W_DATA);
+    m_app_runinfo.m_ability                 = pbuf[0];
+    for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
+
+        pdata                               = &pbuf[2 + i*3];
+        reader_id                           = *pdata;
+        if (reader_id >= m_app_runinfo.m_reader_numbs){
+            rsp                             = RSP_INVALID_PARAM;
+            goto quit;
+        }
+        //若所写的阅读器离线  则忽略对此阅读器的写操作
+        if (DEV_OFFLINE == m_app_runinfo.m_readerinfo_vec_[reader_id].m_exist_){
+            continue;
+        }
+        //设置阅读器id信息
+        pdevice_rfid->reader_id_set(reader_id);
+
+        if (pdata[1] > RFID_READER_MAX_POWER){
+            pdata[1]                        = RFID_READER_MAX_POWER;
+        }
+        if (pdata[2] > RFID_READER_MAX_SCNTIME){
+            pdata[2]                        = RFID_READER_MAX_SCNTIME;
+        }
+        if (pdata[2] < RFID_READER_MIN_SCNTIME){
+            pdata[2]                        = RFID_READER_MIN_SCNTIME;
+        }
+        //write to rfid reader
+        if (0 != pdevice_rfid->power_set(pdata[1])){
+            rsp                             = RSP_EXEC_FAILURE;
+            goto quit;
+        }else {
+            m_app_runinfo.m_readerinfo_vec_[reader_id].m_power   = pdata[1];
+        }
+        if (0 != pdevice_rfid->querytime_set(pdata[2])){
+            rsp                             = RSP_EXEC_FAILURE;
+            goto quit;
+        }else {
+            m_app_runinfo.m_readerinfo_vec_[reader_id].m_scntm   = pdata[2];
+        }
+    }
+quit:
+    *pbuf++                                 = rsp;
+    content_readerinfo_make(pbuf, plen);
+    *plen                                   += 1;
+
+    return (rsp);
 }
 
 portBASE_TYPE CApplication::containerrfid_r_epc(CDevice_Rfid    *pdevice_rfid)
@@ -266,8 +328,37 @@ portBASE_TYPE CApplication::containerrfid_r_epc(CDevice_Rfid    *pdevice_rfid)
     return pdevice_rfid->query_rfid(&m_app_runinfo.m_epcinfo);
 }
 
+//暂未用到
 portBASE_TYPE CApplication::containerrfid_w_epc(CDevice_Rfid    *pdevice_rfid, uint8 *pepc)
 {
+#if 0
+    portBASE_TYPE   try_cnt         = 10;
+    portBASE_TYPE   rt;
+    struct write_info t_writeinfo;
+
+    while (try_cnt > 0){
+        t_writeinfo.m_enum          = m_app_runinfo.m_rfidinfo.m_epclen >> 1;
+        memcpy((void *)t_writeinfo.m_epcarray, (void *)m_app_runinfo.m_rfidinfo.m_epcarray, m_app_runinfo.m_rfidinfo.m_epclen);
+//          t_writeinfo.m_enum  = 12;
+//      t_writeinfo.m_epcarray
+        t_writeinfo.m_mem           = MEM_EPC;
+        t_writeinfo.m_wordptr       = 2;
+        t_writeinfo.m_wnum          = 6;
+
+        if ((rt = pdevice_rfid->write_data(&t_writeinfo, pepc))){
+            SYS_LOG("-----err:write epc!try_cnt = %d--------\n", try_cnt);
+        }
+        if (0 == rt){
+            break;
+        }
+        try_cnt--;
+    }
+    if (try_cnt == 0){
+        SYS_LOG("+++++final err:write epc-+++++--\n");
+    }
+
+    return ((try_cnt == 0)?(-1):(0));
+#endif
 
     return 0;
 }
@@ -328,14 +419,72 @@ portBASE_TYPE CApplication::containerrfid_r_data(CDevice_Rfid   *pdevice_rfid, u
 
 portBASE_TYPE CApplication::containerrfid_w_data(CDevice_Rfid   *pdevice_rfid, uint8 epc_len, uint8 *pepc, uint8 *pdata)
 {
+    portBASE_TYPE   try_cnt         = 10;
+    portBASE_TYPE   rt;
+    struct write_info t_writeinfo;
 
-    return 0;
+    while (try_cnt > 0){
+        t_writeinfo.m_enum          = epc_len >> 1;
+        memcpy((void *)t_writeinfo.m_epcarray, (void *)pepc, epc_len);
+        t_writeinfo.m_mem           = MEM_USER;
+        t_writeinfo.m_wordptr       = user_region_start_index;
+        t_writeinfo.m_wnum          = user_region_len;
+
+        if ((rt = pdevice_rfid->write_data(&t_writeinfo, pdata))){
+            LOG_INFO << "-----err:write data!try_cnt = [" << try_cnt << "]";
+        }
+        if (0 == rt){
+            break;
+        }
+        try_cnt--;
+    }
+    if (try_cnt == 0){
+        LOG_INFO << "-----final err:write data!";
+    }
+
+    return (try_cnt == 0)?(-1):(0);
 }
 
 uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
 {
+    CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
+    uint8           rsp                     = RSP_OK;
+    uint8           data_pos;
 
-    return 0;
+    if (pbuf[0] >= m_app_runinfo.m_reader_numbs){
+        rsp                                 = RSP_INVALID_PARAM;
+        goto quit;
+    }
+    if (DEV_OFFLINE == m_app_runinfo.m_readerinfo_vec_[pbuf[0]].m_exist_){
+        rsp                                 = RSP_INVALID_PARAM;
+        goto quit;
+    }
+    //1th byte:reader id
+    //设置阅读器id信息
+    pdevice_rfid->reader_id_set(pbuf[0]);
+    //epc len + epc
+    //check epc len
+    if (pbuf[1] != FIXED_EPC_LEN){
+        rsp                                 = RSP_INVALID_PARAM_LEN;
+        goto quit;
+    }
+    //check data len
+    data_pos                                = pbuf[1]+2;
+    if (pbuf[data_pos]  != FIXED_DATA_LEN){
+        rsp                                 = RSP_INVALID_PARAM_LEN;
+        goto quit;
+    }
+    //check reader ability
+    if (!(m_app_runinfo.m_ability & TERMINAL_ABILITY_W_DATA)){
+        rsp                                 = RSP_ABILITY_ERR;
+        goto quit;
+    }
+    if (0 != containerrfid_w_data(pdevice_rfid, pbuf[1], &pbuf[2], &pbuf[data_pos+1])){
+        rsp                                 = RSP_EXEC_FAILURE;
+        goto quit;
+    }
+quit:
+    return rsp;
 }
 
 int CApplication::rfid_device_id_get(int index)
@@ -421,6 +570,31 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
 
 portBASE_TYPE CApplication::device_status_send(void)
 {
+    CDevice_net     *pdevice_net            = m_app_runinfo.m_pdevice_net;
+    uint8           loop;
+    uint8           buff[10];
+    portBASE_TYPE   rt;
+    uint16          len                     = 0;
+    uint16          i                       = 0;
+
+    //此处要对处于dev_offline状态下的设备做一次扫描  确定其是否在线  注意此次扫描的等待时间应该缩短  扫描
+    //结束后 再将等待时间恢复
+    //get devices stat
+    buff[len++]                             = m_app_runinfo.m_reader_numbs;
+    for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
+        buff[len++]                         = m_app_runinfo.m_readerinfo_vec_[i].m_id_;
+        buff[len++]                         = m_app_runinfo.m_readerinfo_vec_[i].m_exist_;
+    }
+    loop                                    = 0;
+    do{
+        LOG_INFO << "send device stat info to host";
+        rt                                  = pdevice_net->package_send_status((char *)buff, len);
+        if (rt != 0){
+
+        }else {
+            break;
+        }
+    } while(loop);
 
     return 0;
 }
@@ -448,6 +622,8 @@ portBASE_TYPE CApplication::run()
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_RUN;
     readerrfid_init();
+    //发送一次设备在线信息给后台
+    device_status_send();
 
     while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
         if (m_app_runinfo.m_mode == MODE_INITIATIVE){
@@ -457,6 +633,7 @@ portBASE_TYPE CApplication::run()
                 device_status_send();
                 LOG_INFO << "device status send called";
             }
+            sleep(1);
         }else {
 
         }

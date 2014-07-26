@@ -107,13 +107,16 @@ int  protocol_rfid::validate_aframe(const char* pdata, int len, int& ipacklen)
         rt                      = -3;
         goto quit;
     }
+#if 0
     //命令执行状态校验
     if (pdata[3] != 0){
         rt                      = -4;
         goto quit;
     }
+#endif
 quit:
-    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen;
+    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen << " status = "
+        << static_cast<uint8>(pdata[3]);
     return rt;
 }
 

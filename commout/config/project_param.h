@@ -62,5 +62,17 @@
 
 #define    def_DEVICE_RFID_READER_NODE_NO      (20)
 
+
+//心跳包间隔时间 unit:s
+#define    def_HEART_BEAT_INTERVAL_S        (20)
+
+#define     RFID_READER_MAX_POWER               (30)
+#define     RFID_READER_MAX_SCNTIME             (255)
+#define     RFID_READER_MIN_SCNTIME             (3)
+
+#define     FIXED_EPC_LEN                       (12)
+#define     FIXED_DATA_LEN                      (12)
+
+
 #endif
 

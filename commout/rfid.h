@@ -94,7 +94,7 @@ class channel;
 
 class CDevice_Rfid:boost::noncopyable{
 public:
-    CDevice_Rfid():max_wait_time_(3), reader_id_(0), offset_(4){};
+    CDevice_Rfid():max_wait_time_(3), reader_id_(0), offset_(4), status_(3){};
     ~CDevice_Rfid(){};
 
     void reader_id_set(uint8 id){reader_id_ = id;}
@@ -119,6 +119,7 @@ private:
 	int                         max_wait_time_;
 	uint8                       reader_id_;
 	uint8                       offset_;
+	uint8                       status_;
 	channel                     *pchannel_;
 };    
     

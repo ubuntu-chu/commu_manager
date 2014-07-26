@@ -1,6 +1,7 @@
 #ifndef    _DATUM_H
 #define    _DATUM_H
 
+#include <project_param.h>
 #include <config.h>
 #include <includes/shmem.h>
 #include <muduo/base/Singleton.h>
@@ -14,6 +15,11 @@ class project_datum{
 public:
     project_datum(){}
     ~project_datum(){}
+
+    int heart_beat_interval_get(void)
+    {
+        return def_HEART_BEAT_INTERVAL_S;
+    }
 
 
 //private:
