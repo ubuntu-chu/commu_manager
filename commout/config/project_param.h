@@ -74,5 +74,14 @@
 #define     FIXED_DATA_LEN                      (12)
 
 
+#define     def_LOG_LEV_STRING          ("log_level")
+#define     def_LOG_LEV_TRACE           ("trace")
+#define     def_LOG_LEV_DEBUG           ("debug")
+#define     def_LOG_LEV_INFO            ("info")
+#define     def_LOG_LEV_WARN            ("warn")
+#define     def_LOG_LEV_ERROR           ("error")
+#define     def_LOG_LEV_FATAL           ("fatal")
+
+
 #endif
 

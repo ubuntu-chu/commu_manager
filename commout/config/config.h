@@ -30,8 +30,19 @@ public:
 
 	void device_config_set(device_config &config){device_ 	= config;}
 	device_config &device_config_get(void){return device_;}
+
+	void log_lev_set(char lev)
+	{
+	    log_level_              = lev;
+	}
+	int log_lev_get(void)
+	{
+	    return log_level_;
+	}
+
 private:
 	char   			            describe_[def_DESCRIBE_MAX_LEN];
+	char                       log_level_;
 	power_config 				power_;
 	process_config 				process_;
 	protocol_config 			protocol_;

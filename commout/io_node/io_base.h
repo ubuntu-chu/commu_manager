@@ -9,7 +9,7 @@ class channel;
 //通信基类
 class io_base{
 public:
-    io_base(io_node *pio_node):pio_node_(pio_node){}
+    io_base(io_node *pio_node):connected_(false), pio_node_(pio_node){}
     virtual ~io_base(){}
 
     //初始化通信介质
@@ -26,9 +26,12 @@ public:
 
     //连接通信介质
     virtual bool connect(bool brelink = true);
-
     //断开通信介质，
     virtual bool disconnect(void);
+    bool connected(void)
+    {
+        return connected_;
+    }
 
     //报文拆帧后发送
     int send_package(char *pdata, size_t len);
@@ -66,6 +69,7 @@ protected:
     int                 m_nLastRcv;  //最近周期内收到的报文字节数
     int                 len_;
 
+    bool                connected_;
     io_node             *pio_node_;
     channel             *pchannel_;
 private:

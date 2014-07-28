@@ -11,8 +11,6 @@
 #include <protocol_rfid.h>
 #include "application.h"
 
-#define         DEV_ONLINE                              (1)
-#define         DEV_OFFLINE                             (0)
 
 using std::string;
 
@@ -42,9 +40,10 @@ void signal_handle(int sign_no)
 
 CApplication    *CApplication::m_pcapplicaiton = NULL;
 
+static CApplication     c_application;
+
 CApplication *CApplication::GetInstance(void)
 {
-    static CApplication     c_application;
 
     if (NULL == m_pcapplicaiton){
         m_pcapplicaiton         = &c_application;
@@ -61,6 +60,12 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
 {
 	struct sigaction action;
 	std::string      process_name_str;
+	//依据配置资源 创建channel
+//    boost::ptr_vector<channel> channel_vector;
+//    vector<boost::shared_ptr<channel> > channel_vector;
+	io_node         *pio_node;
+	int             i, j;
+	int             io_vector_no;
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_INIT;
 	m_app_runinfo.m_pdevice_rfid            = &s_Device_rfid;
@@ -68,12 +73,16 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
 	m_app_runinfo.m_ability                 = TERMINAL_ABILITY_NONE;
     m_app_runinfo.m_mode                    = MODE_INITIATIVE;
 
+    //设置网络包处理函数
+    m_app_runinfo.m_pdevice_net->package_event_handler_set(
+            boost::bind(&CApplication::package_event_handler,
+            this, _1, _2, _3));
+
 	action.sa_handler                       = signal_handle;
     sigemptyset(&action.sa_mask);
     action.sa_flags                         = 0;
     sigaction(SIGINT, &action, 0);
 
-    Logger::setLogLevel(Logger::TRACE);
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
 
@@ -88,15 +97,9 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
 	if (xml_parse(config_file_path)){
 		LOG_SYSFATAL << "project xml config file parse failed!";
 	}
-
-	//依据配置资源 创建channel
 	project_config	*pproject_config     = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
-//    boost::ptr_vector<channel> channel_vector;
-//    vector<boost::shared_ptr<channel> > channel_vector;
-	io_node         *pio_node;
-	int             i, j;
-	int             io_vector_no;
+    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
 
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
@@ -160,6 +163,8 @@ void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
 {
     uint16          len                     = 0;
     uint8           i                       = 0;
+    CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
+    vector<struct reader_info> *preader_info = pdevice_rfid->reader_info_get();
 
     if (NULL == pbuf){
         return;
@@ -169,9 +174,9 @@ void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
     //reader numbs
     pbuf[len++]                         = m_app_runinfo.m_reader_numbs;
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
-        pbuf[len++]                     = m_app_runinfo.m_readerinfo_vec_[i].m_id_;
-        pbuf[len++]                     = m_app_runinfo.m_readerinfo_vec_[i].m_power;
-        pbuf[len++]                     = m_app_runinfo.m_readerinfo_vec_[i].m_scntm;
+        pbuf[len++]                     = (*preader_info)[i].m_id_;
+        pbuf[len++]                     = (*preader_info)[i].m_power;
+        pbuf[len++]                     = (*preader_info)[i].m_scntm;
     }
     if (NULL != plen){
         *plen                           = len;
@@ -190,57 +195,50 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     list_node_t     *pos;
     device_node     *pdevice_node;
     class device_rfid_reader_node   *pnode_rfid_reader;
-    struct reader_info  t_reader_info;
+    int             rfid_device_online_no;
 
     //获取通道下所挂接设备数量
 
     pdevice_list_head                       = pdevice_rfid->device_list_head_get();
+    m_app_runinfo.m_reader_numbs            = pdevice_rfid->device_no_get();
+    pdevice_rfid->reader_no_set(m_app_runinfo.m_reader_numbs);
 
     while (loop){
 
-        //设备在线数量
-        m_app_runinfo.m_reader_online_numbs = 0;
-        m_app_runinfo.m_reader_numbs        = 0;
-        m_app_runinfo.m_readerinfo_vec_.clear();
         //遍历设备链表
         list_for_each(pos, pdevice_list_head){
             pdevice_node        = device_node::device_entry(pos);
             pnode_rfid_reader = reinterpret_cast<device_rfid_reader_node *>(pdevice_node);
 
             //查询设备信息
-            t_reader_info.m_id_      = pnode_rfid_reader->id_get();
-            pdevice_rfid->reader_id_set(t_reader_info.m_id_);
-            rt              = pdevice_rfid->query_readerinfo(&t_reader_info);
+            pdevice_rfid->reader_id_set(pnode_rfid_reader->id_get());
+            pdevice_rfid->max_wait_time_restore();
+            rt              = pdevice_rfid->query_readerinfo(NULL);
             //init reader query time, power
             if (rt == 0){
-                t_reader_info.m_exist_                  = DEV_ONLINE;
-                m_app_runinfo.m_reader_online_numbs++;
-                //设置读写时最大等待时间  此时间是指程序读时等待阅读器反应时间
-                pdevice_rfid->max_wait_time_set(t_reader_info.m_scntm/10);
-            }else {
-                t_reader_info.m_exist_                  = DEV_OFFLINE;
             }
-            m_app_runinfo.m_reader_numbs++;
-            m_app_runinfo.m_readerinfo_vec_.push_back(t_reader_info);
         }
+        rfid_device_online_no               = pdevice_rfid->rfid_device_online_no_get();
         LOG_INFO << "rfid device config no [" << m_app_runinfo.m_reader_numbs
-                << "]; exist no [" << m_app_runinfo.m_reader_online_numbs << "]";
+                << "]; exist no [" << rfid_device_online_no
+                << "], now call pdevice_net->package_send_readerinfo with loop = ["
+                << loop << "]";
         //when no reader exist, reader_numbs = 0
         //send reader info  to host
         content_readerinfo_make(buffer, &len);
         rt     = pdevice_net->package_send_readerinfo((char *)buffer, len);
 
-        LOG_INFO << "pdevice_net->package_send_readerinfo with loop = [" << loop << "]";
         utils::log_binary_buf("CApplication::readerrfid_init",
                 reinterpret_cast<const char *>(buffer), len);
 
-        if (0 == m_app_runinfo.m_reader_online_numbs){
+        if (0 == rfid_device_online_no){
             LOG_INFO << "err:no rfid reader find!";
             continue;
         }
         if (rt != 0){
+            LOG_WARN << "no respond from remote, sleep 1 and try again; loop = [" << loop << "]";
             sleep(1);
-            loop--;
+//            loop--;
         }else {
             break;
         }
@@ -264,6 +262,7 @@ portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
     uint8           reader_id;
     uint8           *pdata;
     uint16          len                     = *plen;
+    vector<struct reader_info> *preader_info = pdevice_rfid->reader_info_get();
 
     if (pbuf[1] != m_app_runinfo.m_reader_numbs){
         rsp                                 = RSP_INVALID_PARAM;
@@ -286,7 +285,7 @@ portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
             goto quit;
         }
         //若所写的阅读器离线  则忽略对此阅读器的写操作
-        if (DEV_OFFLINE == m_app_runinfo.m_readerinfo_vec_[reader_id].m_exist_){
+        if (DEV_OFFLINE == pdevice_rfid->reader_status_get(reader_id)){
             continue;
         }
         //设置阅读器id信息
@@ -306,13 +305,13 @@ portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
             rsp                             = RSP_EXEC_FAILURE;
             goto quit;
         }else {
-            m_app_runinfo.m_readerinfo_vec_[reader_id].m_power   = pdata[1];
+            (*preader_info)[reader_id].m_power        = pdata[1];
         }
         if (0 != pdevice_rfid->querytime_set(pdata[2])){
             rsp                             = RSP_EXEC_FAILURE;
             goto quit;
         }else {
-            m_app_runinfo.m_readerinfo_vec_[reader_id].m_scntm   = pdata[2];
+            (*preader_info)[reader_id].m_scntm        = pdata[2];
         }
     }
 quit:
@@ -455,7 +454,7 @@ uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
         rsp                                 = RSP_INVALID_PARAM;
         goto quit;
     }
-    if (DEV_OFFLINE == m_app_runinfo.m_readerinfo_vec_[pbuf[0]].m_exist_){
+    if (DEV_OFFLINE == pdevice_rfid->reader_status_get(pbuf[0])){
         rsp                                 = RSP_INVALID_PARAM;
         goto quit;
     }
@@ -487,24 +486,6 @@ quit:
     return rsp;
 }
 
-int CApplication::rfid_device_id_get(int index)
-{
-    vector<struct reader_info>::iterator it;
-    vector<struct reader_info>::iterator end    = m_app_runinfo.m_readerinfo_vec_.end();
-    int i;
-
-    for (it = m_app_runinfo.m_readerinfo_vec_.begin(); it != end; ++it){
-        if (it->m_exist_ == DEV_ONLINE){
-            if (i == index){
-                break;
-            }
-            i++;
-        }
-    }
-
-    return it->m_id_;
-}
-
 portBASE_TYPE CApplication::protocol_rfid_read(void)
 {
     CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
@@ -515,22 +496,24 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
     uint8           reader_id;
     uint8           buffer[1024];
     uint16          len, tot_len_index, tot_len, rfid_total_numb;
+    int             rfid_device_online_no;
 
+    rfid_device_online_no                   = pdevice_rfid->rfid_device_online_no_get();
     //format  comm  frame
     //len init
     len                                     = 0;
     need_send                               = 0;
     //reader  numb
-    buffer[len++]                           = m_app_runinfo.m_reader_online_numbs;
+    buffer[len++]                           = rfid_device_online_no;
     //record totoal len index  type:uint16
     tot_len_index                           = len;
     len                                     += sizeof(uint16);
     //current len  snapshot
     tot_len                                 = len;
-    for (i = 0; i < m_app_runinfo.m_reader_online_numbs; ++i) {
+    for (i = 0; i < rfid_device_online_no; ++i) {
 
         //获取阅读器id信息
-        reader_id                           = rfid_device_id_get(i);
+        reader_id                           = pdevice_rfid->rfid_device_id_get(i);
         pdevice_rfid->reader_id_set(reader_id);
         //reader  id
         buffer[len++]                       = reader_id;
@@ -571,19 +554,34 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
 portBASE_TYPE CApplication::device_status_send(void)
 {
     CDevice_net     *pdevice_net            = m_app_runinfo.m_pdevice_net;
+    CDevice_Rfid    *pdevice_rfid           = m_app_runinfo.m_pdevice_rfid;
     uint8           loop;
+    uint8           id;
     uint8           buff[10];
     portBASE_TYPE   rt;
     uint16          len                     = 0;
     uint16          i                       = 0;
+    vector<struct reader_info> *preader_info = pdevice_rfid->reader_info_get();
 
     //此处要对处于dev_offline状态下的设备做一次扫描  确定其是否在线  注意此次扫描的等待时间应该缩短  扫描
     //结束后 再将等待时间恢复
+    for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
+        id                                  = (*preader_info)[i].m_id_;
+        if (DEV_OFFLINE == pdevice_rfid->reader_status_get(id)){
+            //巡查设备是否在线
+            pdevice_rfid->reader_id_set(id);
+            pdevice_rfid->max_wait_time_restore();
+            //发出巡查命令  让设备更新自身在线、离线状态
+            pdevice_rfid->query_readerinfo(NULL);
+        }
+    }
+
     //get devices stat
     buff[len++]                             = m_app_runinfo.m_reader_numbs;
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
-        buff[len++]                         = m_app_runinfo.m_readerinfo_vec_[i].m_id_;
-        buff[len++]                         = m_app_runinfo.m_readerinfo_vec_[i].m_exist_;
+        id                                  = (*preader_info)[i].m_id_;
+        buff[len++]                         = id;
+        buff[len++]                         = pdevice_rfid->reader_status_get(id);
     }
     loop                                    = 0;
     do{
@@ -609,12 +607,69 @@ bool CApplication::timer_timeout_occured(void)
     }
     if (n != sizeof(howmany))
     {
-      LOG_ERROR << "timerfd::read() reads " << n << " bytes instead of 8";
+        LOG_ERROR << "timerfd::read() reads " << n << " bytes instead of 8";
     }
 
     return true;
 }
 
+portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8 *pbuf, uint16 len)
+{
+    CDevice_net *pdevice_net                    = m_app_runinfo.m_pdevice_net;
+    uint8        rsp;
+    uint8        fliter                         = 0;
+    uint8        func_code                      = pframe_ctl->app_frm_ptr.fun;
+
+    //主动模式下
+    if (m_app_runinfo.m_mode == MODE_INITIATIVE){
+//      if (pframe_ctl->mac_frm_ptr.ctl.ack_mask == 1){
+//          rsp                 = RSP_ACK_IN_ACTIVE_MODE;
+//            fliter              = 1;
+//      }else if(func_code != def_FUNC_CODE_MODE_SET){
+//            fliter              = 1;
+//          rsp                 = RSP_EXEC_FAILURE;
+//      }
+        //接收到应答帧  直接丢弃
+        if (pframe_ctl->mac_frm_ptr.ctl.ack_mask == 1){
+            LOG_WARN << "Net: recvice ack frame in inactive mode";
+            return 0;
+        //主动模式下 只响应模式设置命令
+        }else if(func_code != def_FUNC_CODE_MODE_SET){
+            fliter                              = 1;
+            rsp                                 = RSP_EXEC_FAILURE;
+        }
+        if (1 == fliter){
+            pdevice_net->package_send_rsp(func_code, &rsp, sizeof(rsp));
+            return 0;
+        }
+    }
+    switch (func_code) {
+        case def_FUNC_CODE_MODE_SET:
+            if (pbuf[0] > MODE_PASSIVITY){
+                rsp                             = RSP_INVALID_PARAM;
+            }else {
+                rsp                             = RSP_OK;
+            }
+            m_app_runinfo.m_mode                = pbuf[0];
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
+            break;
+        case def_FUNC_CODE_READER_SET:
+            readerrfid_write(pbuf, &len);
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
+            break;
+        case def_FUNC_CODE_RFID_W:
+            rsp                                 = protocol_rfid_write(pbuf, len);
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
+            break;
+        default:
+            rsp                                  = RSP_INVALID_CMD;
+            pdevice_net->package_send_rsp(func_code, &rsp, sizeof(rsp));
+            break;
+    }
+
+
+    return 0;
+}
 
 portBASE_TYPE CApplication::run()
 {
@@ -631,13 +686,12 @@ portBASE_TYPE CApplication::run()
             protocol_rfid_read();
             if (timer_timeout_occured()){
                 device_status_send();
-                LOG_INFO << "device status send called";
             }
             sleep(1);
         }else {
 
         }
-//        pdevice_net->package_event_fetch();
+        pdevice_net->package_event_fetch();
     }
 
     return 0;

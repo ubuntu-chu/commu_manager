@@ -50,14 +50,12 @@ struct _app_runinfo_{
 
     int                                 timer_fd_;
 
-    vector<struct reader_info>         m_readerinfo_vec_;
     struct epc_info                     m_epcinfo;
     struct app_rfidinfo                 m_rfidinfo;
     uint8                               m_ability;
     uint8                               m_mode;
     volatile sig_atomic_t              m_status;
     uint8                               m_reader_numbs;    //通道下所挂接设备数量
-    uint8                               m_reader_online_numbs;    //通道下所挂接设备数量
 
     boost::ptr_vector<channel>          channel_vector_;
 
@@ -66,13 +64,14 @@ typedef struct _app_runinfo_ app_runinfo_t;
 
 class CApplication{
 public:
+    CApplication(){};
+    ~CApplication(){};
+
     static CApplication *GetInstance(void);
     portBASE_TYPE run(void);
     portBASE_TYPE init(const char *config_file_path);
 
 private:
-    CApplication(){};
-    ~CApplication(){};
     CApplication(const CApplication &other);
     CApplication &operator =(const CApplication &other);
 
@@ -85,6 +84,8 @@ private:
     portBASE_TYPE containerrfid_r_data(CDevice_Rfid *pdevice_rfid, uint8 index, uint8 *pbuff, uint16 *plen, uint8 ctrl);
     portBASE_TYPE containerrfid_w_data(CDevice_Rfid *pdevice_rfid, uint8 epc_len, uint8 *pepc, uint8 *pdata);
     portBASE_TYPE device_status_send(void);
+
+    portBASE_TYPE package_event_handler(frame_ctl_t *pframe_ctl, uint8 *pbuf, uint16 len);
 
     portBASE_TYPE protocol_rfid_read(void);
 

@@ -252,11 +252,15 @@ bool com::_init(void)
 
 	pio_com_ext_node->ios_get(&com_path, bps, stop, bits, parity);
 
-	parity_print        = parity;
+	parity_print                        = parity;
     LOG_INFO << "device: " << com_path << " bps: " << bps << " stop: " << stop
             << " bits: " << bits << " parity: " << parity_print;
 
-    fd_                                  = dev_open(com_path);
+    connected_                          = false;
+    fd_                                 = dev_open(com_path);
+    if (fd_ < 0){
+        return false;
+    }
     if (dev_conf_save(fd_, &termios_) < 0){
         return false;
     }
@@ -266,6 +270,7 @@ bool com::_init(void)
         return false;
     }
 
+    connected_                          = true;
     channel_.reset(new Channel(loop_, fd_));
     channel_->setReadCallback(
         boost::bind(&com::handle_read, this, _1));

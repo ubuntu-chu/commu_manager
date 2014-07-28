@@ -59,7 +59,7 @@ bool io_base::on_read(const char *pdata, int len, int flag)
     utils::log_binary_buf(log_buf, pdata, len);
     if (NULL != pchannel_){
         if (false == pchannel_->can_receive()){
-            LOG_INFO << "drop data because half duplex in send";
+            LOG_WARN << "drop data because half duplex in send";
             return false;
         }
         return pchannel_->on_read(pdata, len, flag);

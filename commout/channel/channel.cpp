@@ -3,6 +3,7 @@
 #include <ext_client.h>
 #include <inner_server.h>
 #include <com.h>
+#include <io_node.h>
 #include <utils.h>
 
 //初始化通信介质
@@ -46,7 +47,8 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
         status_                         = iflag;
         condition_.notify();
     }
-    LOG_TRACE << "condition ocurred, wake up";
+    LOG_WARN << io_node_name_get() << ": condition ocurred, wake up status_ = [" << status_ << "]";
+//    LOG_TRACE << "condition ocurred, wake up";
 
     return true;
 }
@@ -70,11 +72,18 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
 
     MutexLockGuard lock(mutex_);
     status_                             = 1;
-    frame_arrived_                      = false;
-    vec_ret_.clear();
-    LOG_TRACE << "condition wait start with " << wait_time << " sec";
-    event_loop_->runInLoop(boost::bind(&channel::write_sync, this, vec));
-    condition_.waitForSeconds(wait_time);
+    if (enum_WORK_TYPE_HALF_DUPLEX == duplex_type_){
+        frame_arrived_                  = false;
+        vec_ret_.clear();
+    }
+    LOG_TRACE << io_node_name_get() << ": condition wait start with " << wait_time << " sec";
+//    LOG_WARN << io_node_name_get() << ": condition wait start with " << wait_time << " sec";
+    event_loop_->runInLoop(boost::bind(&channel::write, this, vec));
+    if (false == frame_arrived_){
+        condition_.waitForSeconds(wait_time);
+    }else {
+        status_                         = 0;
+    }
     if (status_ > 0){
         LOG_TRACE << "condition wait end with time out";
     }else if (status_ == 0){
@@ -92,18 +101,6 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
 
     return rt;
 }
-//向通信介质写报文
-int channel::write_sync(vector<char> &vec)
-{
-    if(runinfo_.m_bStatus == false)
-        return COMM_NOTINIT;
-
-    utils::log_binary_buf("channel::write", &vec[0], vec.size());
-    if (NULL != protocol_){
-        return protocol_->write_tochannel(&vec[0], vec.size());
-    }
-    return on_write(&vec[0], vec.size());
-}
 
 int channel::write_inloop(vector<char> &vec)
 {
@@ -118,11 +115,18 @@ int channel::write(vector<char> &vec)
     if(runinfo_.m_bStatus == false)
         return COMM_NOTINIT;
 
+    if (false == io_base_->connected()){
+        LOG_WARN << "channel::on_write quit due to <" << io_node_name_get()
+                << "> no connect";
+        return COMM_DISCONNECT;
+    }
+
     utils::log_binary_buf("channel::write", &vec[0], vec.size());
     if (NULL != protocol_){
         return protocol_->write_tochannel(&vec[0], vec.size());
     }
-    return on_write(&vec[0], vec.size());
+//    return on_write(&vec[0], vec.size());
+    return on_write(&*vec.begin(), vec.size());
 }
 
 //向通信介质写报文
@@ -174,12 +178,13 @@ bool channel::handle_timer(void)
 bool channel::on_read(const char *pdata, int len, int flag)
 {
     if (false == can_receive()){
-        LOG_INFO << "drop data because half duplex in send";
+        LOG_WARN << "drop data because half duplex in send";
         return false;
     }
-    utils::log_binary_buf("channel::on_read", pdata, len);
 	if (NULL != protocol_){
 	    return protocol_->read_frchannel(pdata, len, flag);
+	}else {
+	    utils::log_binary_buf("channel::on_read; protocol_ = NULL", pdata, len);
 	}
 
     return true;
@@ -304,4 +309,16 @@ list_head_t *channel::device_list_head_get(void)
 }
 
 
+list_head_t *channel::device_maped_list_head_get(void)
+{
+    io_base *pio_base           = io_base_get();
+    io_node *pio_node           = pio_base->io_node_get();
+    io_node *pio_node_map       = pio_node->io_node_map_get();
+
+    //获取此通道下io下所挂接设备
+    //同一个io下所有设备的class type必须相同
+    list_head_t * plist_head  = pio_node_map->device_list_head_get();
+
+    return plist_head;
+}
 

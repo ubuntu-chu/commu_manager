@@ -140,7 +140,6 @@ int  protocol_mac::validate_aframe(const char* pdata, int len, int& ipacklen)
     int     rt  = 1;
 
     ipacklen                    = 0;
-    LOG_INFO << "called with len = " << len;
     //数据帧长度 不能小于4
     if (len < 4){
         rt                      = 0;
@@ -178,7 +177,8 @@ int  protocol_mac::validate_aframe(const char* pdata, int len, int& ipacklen)
 #endif
 
 quit:
-    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen;
+//    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;
+    LOG_WARN << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;
     return rt;
 }
 
@@ -240,5 +240,28 @@ mac_frm_ctrl_t protocol_mac::mac_frm_ctrl_init(uint8 ack, uint8 dir, uint8 ack_r
 }
 
 
+int8 protocol_mac::frm_ctrl_unpack(uint8_t* pbuf, uint16 len, frame_ctl_t *pfrm_ctl)
+{
+    //valid frame   for safe: byte by byte
+    pfrm_ctl->mac_frm_ptr.delimiter_start       = LD_DWORD(&pbuf[0]);
+    //不包括开始界定符 和 帧长
+    pfrm_ctl->mac_frm_ptr.len           = len - 4;
+    pfrm_ctl->mac_frm_ptr.seq_id        = LD_DWORD(&pbuf[4]);
+    pfrm_ctl->mac_frm_ptr.dev_adr       = LD_DWORD(&pbuf[12]);
+    pfrm_ctl->mac_frm_ptr.sen_adr       = LD_DWORD(&pbuf[16]);
+    pfrm_ctl->mac_frm_ptr.time      = LD_DWORD(&pbuf[8]);
+    //set sys time
+//    cpu_sys_time_set(pfrm_ctl->mac_frm_ptr.time);
+    memcpy(&pfrm_ctl->mac_frm_ptr.ctl, &pbuf[6], 2);
+    //pfrm_ctl->mac_frm_ptr.ctl     = (mac_frm_ctrl_t)LD_WORD(&pbuf[6]);
+    pfrm_ctl->mac_frm_ptr.type      = pbuf[20];
+    pfrm_ctl->app_frm_ptr.fun       = pbuf[21];
+    pfrm_ctl->app_frm_ptr.sum       = pbuf[22];
+    pfrm_ctl->app_frm_ptr.idex      = pbuf[23];
+    pfrm_ctl->app_frm_ptr.len       = LD_WORD(&pbuf[24]);
+    pfrm_ctl->data_ptr              = &pbuf[26];
+
+    return 0;
+}
 
 

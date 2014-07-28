@@ -33,12 +33,6 @@ enum rfid_reader_cmd{
 	READER_WORKMODEPARAM    = 0x36,
 };
 
-portBASE_TYPE CDevice_Rfid::max_wait_time_set(uint8 wait_time)
-{
-    max_wait_time_                      = wait_time;
-
-	return 0;
-}
 
 portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc)
 {
@@ -68,6 +62,37 @@ portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *p
 	return 0;
 }
 
+int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
+{
+    int            rt;
+    int            max_wait_time;
+
+    if (pchannel_ == NULL){
+        return -1;
+    }
+    //调用通道写函数
+    //readerinfo_vec_[reader_id_].m_scntm 单位100ms
+    max_wait_time                   = readerinfo_vec_[reader_id_].m_scntm/10;
+    if (0 == max_wait_time){
+        max_wait_time               = 1;
+    }
+    rt = pchannel_->write_sync_inloop(vec, max_wait_time, ppvec_ret);
+
+    //rt > 0 代表操作超时
+    if (rt > 0){
+        readerinfo_vec_[reader_id_].m_offline_cnt_++;
+        //与设备通讯超时3次后 认为设备离线
+        if (readerinfo_vec_[reader_id_].m_offline_cnt_ > 0){
+            readerinfo_vec_[reader_id_].m_exist_    = DEV_OFFLINE;
+        }
+    }else {
+        readerinfo_vec_[reader_id_].m_offline_cnt_  = 0;
+        readerinfo_vec_[reader_id_].m_exist_        = DEV_ONLINE;
+    }
+
+    return rt;
+}
+
 portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
 {
     vector<char>   vec_send;
@@ -79,10 +104,12 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
     vec_send.push_back(QUERY_RFID);
 
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+//        LOG_INFO << "Err: " << __func__ << " failed! info: rt = [" << rt
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
 
@@ -118,10 +145,11 @@ portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
     }
 
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
 
@@ -166,10 +194,11 @@ portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
         vec_send.push_back(*pdata++);
     }
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
 
@@ -187,13 +216,29 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
     vec_send.push_back(READER_INFO);
 
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    readerinfo_vec_[reader_id_].m_id_             = reader_id_;
+    readerinfo_vec_[reader_id_].m_power           = 0;
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
+    //更新设备的扫描时间
+    readerinfo_vec_[reader_id_].m_version_hi      = static_cast<uint8>((*pvec_ret)[offset_+0]);
+    readerinfo_vec_[reader_id_].m_version_low     = static_cast<uint8>((*pvec_ret)[offset_+1]);
+    readerinfo_vec_[reader_id_].m_type            = static_cast<uint8>((*pvec_ret)[offset_+2]);
+    readerinfo_vec_[reader_id_].m_tr_type         = static_cast<uint8>((*pvec_ret)[offset_+3]);
+    readerinfo_vec_[reader_id_].m_dmaxfre         = static_cast<uint8>((*pvec_ret)[offset_+4]) & 0x3f;
+    readerinfo_vec_[reader_id_].m_dminfre         = static_cast<uint8>((*pvec_ret)[offset_+5]) & 0x3f;
+    readerinfo_vec_[reader_id_].m_power           = static_cast<uint8>((*pvec_ret)[offset_+6]);
+    readerinfo_vec_[reader_id_].m_scntm           = static_cast<uint8>((*pvec_ret)[offset_+7]);
+    readerinfo_vec_[reader_id_].m_freqband        = (enum freqband)((static_cast<uint8>((*pvec_ret)[offset_+4])>>6)
+                                                        + (static_cast<uint8>((*pvec_ret)[offset_+5])>>6));
     if (NULL != info){
+        *info                  = readerinfo_vec_[reader_id_];
+#if 0
         info->m_version_hi      = static_cast<uint8>((*pvec_ret)[offset_+0]);
         info->m_version_low     = static_cast<uint8>((*pvec_ret)[offset_+1]);
         info->m_type            = static_cast<uint8>((*pvec_ret)[offset_+2]);
@@ -204,6 +249,7 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
         info->m_scntm           = static_cast<uint8>((*pvec_ret)[offset_+7]);
         info->m_freqband        = (enum freqband)((static_cast<uint8>((*pvec_ret)[offset_+4])>>6)
                                     + (static_cast<uint8>((*pvec_ret)[offset_+5])>>6));
+#endif
     }
 
 	return 0;
@@ -218,16 +264,17 @@ portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
     //组装命令
     vec_send.push_back(reader_id_);
     vec_send.push_back(READER_TIME);
-    if (scantime < 3){
-        scantime        = 3;
+    if (scantime < RFID_READER_MIN_SCNTIME){
+        scantime        = RFID_READER_MIN_SCNTIME;
     }
     vec_send.push_back(scantime);
 
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
 
@@ -244,16 +291,17 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
     //组装命令
     vec_send.push_back(reader_id_);
     vec_send.push_back(READER_POWER);
-    if (power > 30){
-        power        = 30;
+    if (power > RFID_READER_MAX_POWER){
+        power        = RFID_READER_MAX_POWER;
     }
     vec_send.push_back(power);
 
     //调用通道写函数
-    rt = pchannel_->write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_ERROR << "Err: " << __func__ << "failed! info: status = [" << rt << "]";
+        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
+                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
         return -1;
     }
 
@@ -263,5 +311,10 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
 list_head_t *CDevice_Rfid::device_list_head_get()
 {
     return pchannel_->device_list_head_get();
+}
+
+int CDevice_Rfid::device_no_get(void)
+{
+    return pchannel_->device_no_get();
 }
 

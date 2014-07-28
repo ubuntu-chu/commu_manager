@@ -22,7 +22,6 @@ enum{
     COMM_CLOSE          =   103,        //通道关闭
 
     COMM_CONNECT        =   105,        //通道连接成功（面向连接）
-    COMM_DISCONNECT     =   106,        //通道断开（面向连接）
     COMM_ACCEPT         =   107,        //接收新的客户端（面向连接）
     COMM_WAITCONNECT    =   108,        //等待客户端连接
     COMM_DISACCEPT      =   109,        //不接收新的客户端（面向连接）
@@ -33,6 +32,7 @@ enum{
     CHANNEL_NOTINIT     =   -1002,       //通道未初始化
 
     COMM_INVALIDPTR     =   -2000,       //无效的指针
+    COMM_DISCONNECT     =   -2001,        //通道断开（面向连接）
 };
 
 class channel_runinfo{
@@ -150,16 +150,20 @@ public:
     //获取此通道的io_base下所挂在设备的数目
     int device_no_get(void);
     list_head_t *device_list_head_get(void);
+    list_head_t *device_maped_list_head_get(void);
 
 private:
     int write(vector<char> &vec);
-    int write_sync(vector<char> &vec);
 	bool power_ctrl(char value)
 	{
 	    if (NULL == io_base_){
 	        return false;
 	    }
         return io_base_->power_ctrl(value);
+	}
+	const char *io_node_name_get(void)
+	{
+	    return io_base_->io_node_get()->name_get();
 	}
 
 

@@ -442,6 +442,25 @@ int xml_parse(const char *path)
 	}
 	TiXmlElement *pRootEle = doc.RootElement();
 
+	//查找日志等级配置
+    strAttrName                         = def_LOG_LEV_STRING;
+    if (false == xml_QueryNode_Attribute(pRootEle, strAttrName, value)){
+	    return  -1;
+    }
+    if (0 == strcmp(def_LOG_LEV_TRACE, value.c_str())){
+        t_project_config.log_lev_set(Logger::TRACE);
+    }else if (0 == strcmp(def_LOG_LEV_DEBUG , value.c_str())){
+        t_project_config.log_lev_set(Logger::DEBUG);
+    }else if (0 == strcmp(def_LOG_LEV_INFO , value.c_str())){
+        t_project_config.log_lev_set(Logger::INFO);
+    }else if (0 == strcmp(def_LOG_LEV_WARN , value.c_str())){
+        t_project_config.log_lev_set(Logger::WARN);
+    }else if (0 == strcmp(def_LOG_LEV_ERROR , value.c_str())){
+        t_project_config.log_lev_set(Logger::ERROR);
+    }else if (0 == strcmp(def_LOG_LEV_FATAL , value.c_str())){
+        t_project_config.log_lev_set(Logger::FATAL);
+    }
+
 	//解析power配置信息
 	strNodeName                         = def_POWER_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
