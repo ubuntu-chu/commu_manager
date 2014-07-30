@@ -129,49 +129,68 @@ bool protocol_mac::process_aframe(const char * pdata, int len, int iflag)
 //参数说明: BYTE* pData 报文数据缓冲区
 //参数说明: int iDataLen 缓冲区数据长度
 //参数说明: int& iPackLen 数据帧长度  当数据仍在接收时 不关心ipacklen的值
-//返 回 值: < 0 数据仍在接受   = 0 一帧接收完成   < 0 一帧接收出错
+//返 回 值: = 0 数据仍在接受   > 0 一帧接收完成   < 0 一帧接收出错
 //备    注:
 ////////////////////////////////////////////////////////////////////////////////
 
-int  protocol_mac::validate_aframe(const char* pdata, int len, int& ipacklen)
+int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
     uint16 chk_sum;
     uint16 frame_len;
     int     rt  = 1;
+    const char *pdata                  = pinfo->pdata_;
+    int     len                         = pinfo->len_;
+    int     i   = 0;
 
-    ipacklen                    = 0;
+
+    ipacklen                            = 0;
     //数据帧长度 不能小于4
     if (len < 4){
-        rt                      = 0;
+        rt                              = 0;
         goto quit;
     }
-    frame_len = LD_DWORD(&pdata[2]);
+    //找到帧头  若未找到帧头 则认为此帧为错误帧 丢弃
+    for (i = 0; i < len - 1; i++){
+        //check head
+        if ((static_cast<uint8>(pdata[i]) == static_cast<uint8>(def_FRAME_delimiter & 0x00ff))
+            && (static_cast<uint8>(pdata[i+1]) == static_cast<uint8>(def_FRAME_delimiter >> 8))) {
+            //记录下实际帧头位置
+            pinfo->pdata_actual_        = &pdata[i];
+            break;
+        }
+    }
+    //在整个数据中 未找到帧头 丢弃此帧
+    if (i == len - 1){
+        ipacklen                        = len;
+        rt                              = -1;
+        goto quit;
+    }
+
+    //更新帧头位置
+    pdata                               = pinfo->pdata_actual_;
+    //查看是否完整的接收到一帧数据
+    frame_len                           = LD_DWORD(&pdata[2]);
     //check len
-    if (frame_len != len - 4) {
-        rt                      = 0;
+    if (frame_len > (len - 4 - i)) {
+        rt                              = 0;
         goto quit;
     }
 
     //下面的情况 认为帧已经接收完全 需要对帧错误情况进行判断
-    ipacklen                    = len;
-    //check head
-    if ((pdata[0] != (def_FRAME_delimiter & 0x00ff))
-            && (pdata[1] != (def_FRAME_delimiter >> 8))) {
-        rt                      = -1;
-        goto quit;
-    }
+    ipacklen                            = frame_len + i + 4;
     //check tail
-    if ((pdata[len - 2] != (def_FRAME_END_delimiter & 0x00ff))
-            && (pdata[len - 1] != (def_FRAME_END_delimiter >> 8))) {
-        rt                      = -2;
+    if ((static_cast<uint8>(pdata[frame_len + 2]) != static_cast<uint8>(def_FRAME_END_delimiter & 0x00ff))
+        || (static_cast<uint8>(pdata[frame_len + 3]) != static_cast<uint8>(def_FRAME_END_delimiter >> 8))) {
+        rt                              = -2;
         goto quit;
     }
+
 #if 0
     //check sum
     chk_sum = LD_WORD(&pdata[len-4]);
     if (chk_sum != frm_ck_sum(
-            reinterpret_cast<uint8_t *>(const_cast<char *>(pdata)), len - 4)) {
-        rt                      = -3;
+            reinterpret_cast<uint8_t *>(const_cast<char *>(pdata)), frame_len)) {
+        rt                              = -3;
         goto quit;
     }
 #endif

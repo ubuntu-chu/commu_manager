@@ -99,7 +99,8 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
 	}
 	project_config	*pproject_config     = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
-    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
+//    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
+    Logger::setLogLevel(muduo::Logger::INFO);
 
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
@@ -213,7 +214,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
             //查询设备信息
             pdevice_rfid->reader_id_set(pnode_rfid_reader->id_get());
             pdevice_rfid->max_wait_time_restore();
-            rt              = pdevice_rfid->query_readerinfo(NULL);
+            rt                  = pdevice_rfid->query_readerinfo(NULL);
             //init reader query time, power
             if (rt == 0){
             }
@@ -650,7 +651,9 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
             }else {
                 rsp                             = RSP_OK;
             }
-            m_app_runinfo.m_mode                = pbuf[0];
+            if (rsp == RSP_OK){
+                m_app_runinfo.m_mode            = pbuf[0];
+            }
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
             break;
         case def_FUNC_CODE_READER_SET:

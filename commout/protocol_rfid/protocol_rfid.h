@@ -19,7 +19,7 @@ public:
     virtual int package_aframe(char* pdata, int len);
     virtual bool process_aframe(const char * pdata, int len, int iflag = 0);
 
-    virtual int  validate_aframe(const char* pdata, int len, int& ipacklen);
+    virtual int  validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen);
 
     virtual bool handle_timer(void);
 //private:

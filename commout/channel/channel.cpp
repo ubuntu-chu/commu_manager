@@ -16,6 +16,7 @@ bool channel::init(void)
 	duplex_type_                        = io_base_->duplextype_get();
 	status_                             = 0;
     frame_arrived_                      = false;
+    write_sync_inloop_called_           = 0;
     protocol_->init();
 	return io_base_->init();
 }
@@ -37,33 +38,40 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 
     MutexLockGuard lock(mutex_);
     if (0 == iflag){
+        //新的一帧已经到来   将之前尚未处理的帧清除
+        vec_ret_.clear();
         for (i = 0; i < len; i++){
             vec_ret_.push_back(pdata[i]);
         }
     }
     frame_arrived_                      = true;
+    frame_flag_                         = iflag;
+    status_                             = frame_flag_;
     //判断之前是否调用过 write_sync_inloop函数
-    if (1 == status_){
-        status_                         = iflag;
+    if (1 == write_sync_inloop_called_){
         condition_.notify();
     }
-    LOG_WARN << io_node_name_get() << ": condition ocurred, wake up status_ = [" << status_ << "]";
-//    LOG_TRACE << "condition ocurred, wake up";
+    LOG_TRACE << io_node_name_get() << ": condition ocurred, wake up status_ = [" << status_ << "]";
 
     return true;
 }
 
-bool channel::fetch(vector<char> &vec)
+enum channel_fetch channel::fetch(vector<char> &vec)
 {
     if (frame_arrived_ == true){
-        vec                             = vec_ret_;
+        MutexLockGuard lock(mutex_);
+
+        //接收到完整帧
+        if (0 == frame_flag_){
+            vec                         = vec_ret_;
+        }
         vec_ret_.clear();
         frame_arrived_                  = false;
 
-        return true;
+        return (0 == frame_flag_)?(enum_CH_FETCH_AFRAME):(enum_CH_FETCH_ERR_FRAME);
     }
 
-    return false;
+    return enum_CH_FETCH_NO_FRAME;
 }
 
 int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
@@ -71,7 +79,9 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
     int     rt;
 
     MutexLockGuard lock(mutex_);
+    //status_默认为超时状态
     status_                             = 1;
+    write_sync_inloop_called_           = 1;
     if (enum_WORK_TYPE_HALF_DUPLEX == duplex_type_){
         frame_arrived_                  = false;
         vec_ret_.clear();
@@ -82,7 +92,8 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
     if (false == frame_arrived_){
         condition_.waitForSeconds(wait_time);
     }else {
-        status_                         = 0;
+        //frame_arrived_为true时 代表在调用写之前已经有一帧接收到 帧的状态存放在frame_flag_中
+        status_                         = frame_flag_;
     }
     if (status_ > 0){
         LOG_TRACE << "condition wait end with time out";
@@ -95,9 +106,10 @@ int channel::write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **
         *ppvec_ret                      = &vec_ret_;
     }
 
+    frame_arrived_                      = false;
     rt                                  = status_;
     //恢复默认值
-    status_                             = 0;
+    write_sync_inloop_called_           = 0;
 
     return rt;
 }

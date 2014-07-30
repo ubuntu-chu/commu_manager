@@ -20,9 +20,12 @@ void protocol::uninit()
 //读取通道报文
 bool protocol::read_frchannel(const char *pdata, int len, int iflag)
 {
+    struct validate_aframe_info     t_validate_aframe_info;
+
     //通道信息
     if(iflag != 0) {
         process_aframe(pdata, len, iflag);
+
         return true;
     }
     inbuffer_.append(pdata, len);
@@ -30,10 +33,22 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         int         packlen;
         int         rt;
         const char  *paddr        = inbuffer_.peek();
-        int         len            = inbuffer_.readableBytes();
+        int         no             = inbuffer_.readableBytes();
 
-        utils::log_binary_buf("protocol::read_frchannel", paddr, len);
-        rt = validate_aframe(paddr, len, packlen);
+        utils::log_binary_buf("protocol::read_frchannel", paddr, no);
+        //使用pdata_  pdata_actual_ 原因： 整个数据中 可能在完整的一帧前 包含有些无效数据 其中pdata_
+        //指向整个数据的起始地址 pdata_actual_指向完整一帧的数据起始地址 pdata_actual_和pdata_之间的
+        //差值即为完整一帧之前的无效数据个数
+        t_validate_aframe_info.pdata_                       = paddr;
+        t_validate_aframe_info.pdata_actual_                = t_validate_aframe_info.pdata_;
+        t_validate_aframe_info.len_                         = no;
+        //packlen的值代表从整个数据的起始地址到完整一帧的尾部数据地址的长度
+        rt = validate_aframe(&t_validate_aframe_info, packlen);
+        //pdata_actual_为实际的数据帧开始地址
+        paddr                                               = t_validate_aframe_info.pdata_actual_;
+        //计算帧实际长度
+        packlen                                             -= t_validate_aframe_info.pdata_-paddr;
+
         //打印帧
         //帧尚未接收完全
         if (rt == 0){
@@ -44,7 +59,7 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
             process_aframe(paddr, packlen, rt);
             inbuffer_.retrieve(packlen);
             runinfo_.m_nErrorPack++;
-            break;
+            continue;
         //正确帧
         }else {
             runinfo_.m_nRcvPackTotal++;
@@ -86,7 +101,7 @@ int  protocol::package_aframe(char* pdata, int len)
     return 0;
 }
 
-int  protocol::validate_aframe(const char* pdata, int len, int& ipacklen)
+int  protocol::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
 
     return 0;

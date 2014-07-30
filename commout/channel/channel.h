@@ -56,6 +56,13 @@ public:
     int             m_iRetryTimes;  //断开时重连次数
 };
 
+enum channel_fetch{
+    enum_CH_FETCH_ERR_FRAME = -1,
+    enum_CH_FETCH_AFRAME    = 0,
+    enum_CH_FETCH_NO_FRAME = 1,
+
+};
+
 class channel:boost::noncopyable{
 public:
     channel():mutex_(),
@@ -73,7 +80,7 @@ public:
     //获取函数
     //返回值： false 表示通道暂未接收到数据帧
     //       true   表示通道已接受到数据帧    数据帧通过容器返回
-    bool fetch(vector<char> &vec);
+    enum channel_fetch fetch(vector<char> &vec);
 
     //向通信介质写报文   同步版本
     //返回值： > 0  执行超时
@@ -178,8 +185,10 @@ private:
 
     mutable MutexLock      mutex_;
     Condition               condition_;
-    int                    status_;
-    int                    frame_arrived_;
+    int                     status_;
+    sig_atomic_t            frame_arrived_;
+    sig_atomic_t            frame_flag_;
+    sig_atomic_t            write_sync_inloop_called_;
     vector<char>            vec_ret_;
 };
 

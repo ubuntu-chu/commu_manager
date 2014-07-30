@@ -39,6 +39,12 @@ enum protocol_phase{
     enum_PROTOCOL_DONE,
 };
 
+struct validate_aframe_info{
+    const char          *pdata_;
+    const char          *pdata_actual_;
+    int                  len_;
+};
+
 class channel;
 class protocol:boost::noncopyable{
 public:
@@ -77,7 +83,7 @@ public:
     //返 回 值: < 0 数据仍在接受   = 0 一帧接收完成   < 0 一帧接收出错
     //备    注:
     ////////////////////////////////////////////////////////////////////////////////
-    virtual int  validate_aframe(const char* pdata, int len, int& ipacklen);
+    virtual int  validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen);
 
     virtual bool handle_timer(void);
 

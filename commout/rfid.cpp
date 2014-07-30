@@ -93,6 +93,16 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     return rt;
 }
 
+void CDevice_Rfid::log_print(const char *func, int rt, vector<char> *pvec_ret)
+{
+    LOG_WARN << "Err: " << func << " failed! info: rt = [" << rt << "]";
+    //当不是由超时引发的错误时
+    if (rt <= 0){
+        LOG_WARN << "status = [" << muduo::Fmt("0x%x", static_cast<unsigned char>((*pvec_ret)[status_])) << "]";
+    }
+}
+
+
 portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
 {
     vector<char>   vec_send;
@@ -107,9 +117,7 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
-//        LOG_INFO << "Err: " << __func__ << " failed! info: rt = [" << rt
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
@@ -148,14 +156,14 @@ portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
 	if (NULL != pbuf){
+		//-6即减去len addr recmd status lsb-crc16 msb-crc16
 		memcpy((void *)pbuf, (void *)(&(*pvec_ret)[offset_]),
-		        (*pvec_ret).size());
+		        (*pvec_ret).size()-6);
 	}
 
 	return 0;
@@ -197,8 +205,7 @@ portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
@@ -221,8 +228,7 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
     readerinfo_vec_[reader_id_].m_id_             = reader_id_;
     readerinfo_vec_[reader_id_].m_power           = 0;
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
     //更新设备的扫描时间
@@ -273,8 +279,7 @@ portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
@@ -300,8 +305,7 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
-        LOG_WARN << "Err: " << __func__ << " failed! info: rt = [" << rt
-                << "] status = [" << static_cast<uint8>((*pvec_ret)[status_]) << "]";
+        log_print(__func__, rt, pvec_ret);
         return -1;
     }
 

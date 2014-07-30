@@ -188,6 +188,8 @@ public:
 
 	void channel_set(channel *pchannel){pchannel_    = pchannel;}
 	channel *channel_get(void){return pchannel_;}
+
+	void log_print(const char *func, int rt, vector<char> *pvec_ret);
 private:
     CDevice_Rfid(const CDevice_Rfid &other);
     CDevice_Rfid &operator =(const CDevice_Rfid &other);

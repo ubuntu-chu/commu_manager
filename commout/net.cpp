@@ -95,6 +95,9 @@ int CDevice_net::package_send_readerinfo(char *pbuf, uint16 len)
     if (0 == rt){
         frame_ctl_t         t_frame_ctl;
 
+        utils::log_binary_buf("CDevice_net::package_send_readerinfo",
+                reinterpret_cast<const char *>(&((*pvec_ret)[0])),
+                pvec_ret->size());
         frm_ctrl_unpack(reinterpret_cast<uint8_t *>(&((*pvec_ret)[0])),
                 pvec_ret->size(), &t_frame_ctl);
         //t_frame_ctl.data_ptr[0]  result
@@ -111,6 +114,9 @@ int CDevice_net::package_send_readerinfo(char *pbuf, uint16 len)
             }
         }
     }else {
+        if (rt < 0){
+            LOG_WARN  << "Net recv:invalid ack frame";
+        }
         rt                              = -1;
     }
 
@@ -123,7 +129,8 @@ portBASE_TYPE CDevice_net::package_event_fetch(void)
         return -1;
     }
 
-    if (pchannel_->fetch(vec_recv_)){
+    //接收到正确、完整帧
+    if (enum_CH_FETCH_AFRAME == pchannel_->fetch(vec_recv_)){
         frame_ctl_t     t_frame_ctl;
         list_head_t     *device_maped_list_head  = pchannel_->device_maped_list_head_get();
         device_node     *pdevice_node = list_entry_offset(device_maped_list_head->m_next,

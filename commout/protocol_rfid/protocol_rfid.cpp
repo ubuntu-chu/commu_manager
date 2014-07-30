@@ -70,27 +70,29 @@ bool protocol_rfid::process_aframe(const char * pdata, int len, int iflag)
 //参数说明: BYTE* pData 报文数据缓冲区
 //参数说明: int iDataLen 缓冲区数据长度
 //参数说明: int& iPackLen 数据帧长度  当数据仍在接收时 不关心ipacklen的值
-//返 回 值: < 0 数据仍在接受   = 0 一帧接收完成   < 0 一帧接收出错
+//返 回 值: = 0 数据仍在接受   > 0 一帧接收完成   < 0 一帧接收出错
 //备    注:
 ////////////////////////////////////////////////////////////////////////////////
 
-int  protocol_rfid::validate_aframe(const char* pdata, int len, int& ipacklen)
+int  protocol_rfid::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
     //check frame valid
     uint16      crc;
-    int     rt                  = 1;
+    int     rt                          = 1;
+    const char *pdata                  = pinfo->pdata_;
+    int     len                         = pinfo->len_;
 
-    ipacklen                    = 0;
+    ipacklen                            = 0;
     if (len < (pdata[0] + 1)){
-        rt                      = 0;
+        rt                              = 0;
         goto quit;
     }
-    ipacklen                    = len;
+    ipacklen                            = len;
     //caculate crc
     //验证crc校验码
     crc     = uiCrc16Cal(reinterpret_cast<const unsigned char *>(pdata), len);
     if (0 != crc){
-        rt                      = -1;
+        rt                              = -1;
         goto quit;
     }
 
@@ -99,12 +101,12 @@ int  protocol_rfid::validate_aframe(const char* pdata, int len, int& ipacklen)
     //地址校验
     outbuffer_.retrieveInt8();
     if (pdata[1] != outbuffer_.readInt8()){
-        rt                      = -2;
+        rt                              = -2;
         goto quit;
     }
     //命令校验
     if (pdata[2] != outbuffer_.readInt8()){
-        rt                      = -3;
+        rt                              = -3;
         goto quit;
     }
 

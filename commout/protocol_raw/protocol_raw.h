@@ -182,7 +182,7 @@ public:
     //返 回 值: virtual int 帧起始位置在数据缓冲区的偏移
     //备    注:
     ////////////////////////////////////////////////////////////////////////////////
-    virtual int  validate_aframe(const char* pdata, int len, int& ipacklen);
+    virtual int  validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen);
 
     virtual bool handle_timer(void);
 
