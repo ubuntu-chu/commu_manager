@@ -30,6 +30,7 @@ enum{
     def_FUNC_CODE_READER_SET,
     def_FUNC_CODE_RFID_R,
     def_FUNC_CODE_RFID_W,
+    def_FUNC_CODE_SOUND_SET,
 };
 
 class channel;

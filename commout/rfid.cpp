@@ -82,7 +82,7 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     if (rt > 0){
         readerinfo_vec_[reader_id_].m_offline_cnt_++;
         //与设备通讯超时3次后 认为设备离线
-        if (readerinfo_vec_[reader_id_].m_offline_cnt_ > 0){
+        if (readerinfo_vec_[reader_id_].m_offline_cnt_ > 1){
             readerinfo_vec_[reader_id_].m_exist_    = DEV_OFFLINE;
         }
     }else {
@@ -310,6 +310,74 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
     }
 
 	return 0;
+}
+
+portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
+{
+    vector<char>   vec_send;
+    vector<char>   *pvec_ret;
+    int            rt;
+    char           mode_state;
+    char           read_mode_offset = 8;
+    char           read_mode;
+
+    //组装命令
+    vec_send.push_back(reader_id_);
+    vec_send.push_back(READER_WORKMODEPARAM);
+
+    //调用通道写函数
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
+        log_print(__func__, rt, pvec_ret);
+        return -1;
+    }
+
+    vec_send.clear(); 
+    vec_send.push_back(reader_id_);
+    vec_send.push_back(READER_WORKMODE);
+    //先读取工作模式参数  然后再进行设置
+    //read_mode:工作模式选择 应答模式
+    read_mode               =  (*pvec_ret)[read_mode_offset++];
+    vec_send.push_back(2);
+    //mode_state
+    //bit0  bit0=0 读写器支持18000-6c协议
+    //bit1  bit1=1 rs232/rs485输出
+    //bit2  bit2=0 buzzer on   bit2=1 buzzer 0ff
+    mode_state              = (*pvec_ret)[read_mode_offset++];
+    if (on){
+        mode_state          &= ~0x04;
+    }else {
+        mode_state          |= 0x04;
+    }
+    vec_send.push_back(mode_state);
+    //mem_inven
+    vec_send.push_back((*pvec_ret)[read_mode_offset++]);
+    //first_adr
+    vec_send.push_back((*pvec_ret)[read_mode_offset++]);
+    //word_num
+    vec_send.push_back((*pvec_ret)[read_mode_offset++]);
+    //tag_time
+    vec_send.push_back((*pvec_ret)[read_mode_offset++]);
+
+    //调用通道写函数
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
+        log_print(__func__, rt, pvec_ret);
+        return -1;
+    }
+
+    vec_send[2]             = read_mode;
+    //调用通道写函数
+    rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
+
+    if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
+        log_print(__func__, rt, pvec_ret);
+        return -1;
+    }
+ 
+    return 0;
 }
 
 list_head_t *CDevice_Rfid::device_list_head_get()

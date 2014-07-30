@@ -139,6 +139,7 @@ public:
 	portBASE_TYPE query_readerinfo(struct reader_info *info);
 	portBASE_TYPE querytime_set(uint8 scantime);
 	portBASE_TYPE power_set(uint8 power);
+	portBASE_TYPE sound_set(uint8 on);
 	portBASE_TYPE read_data(struct read_info *pinfo, uint8 *pbuf);
 	portBASE_TYPE write_data(struct write_info *pinfo, uint8 *pbuf);
 	static portBASE_TYPE epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc);

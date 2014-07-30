@@ -79,6 +79,7 @@ private:
     uint8 protocol_rfid_write(uint8 *pbuf, uint16 len);
     portBASE_TYPE readerrfid_init(void);
     portBASE_TYPE readerrfid_write(uint8 *pbuf, uint16 *plen);
+    portBASE_TYPE readerrfid_sound_set(uint8 *pbuf, uint16 *plen);
     portBASE_TYPE containerrfid_r_epc(CDevice_Rfid  *pdevice_rfid);
     portBASE_TYPE containerrfid_w_epc(CDevice_Rfid  *pdevice_rfid, uint8 *pepc);
     portBASE_TYPE containerrfid_r_data(CDevice_Rfid *pdevice_rfid, uint8 index, uint8 *pbuff, uint16 *plen, uint8 ctrl);

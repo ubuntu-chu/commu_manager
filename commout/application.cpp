@@ -255,6 +255,53 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     return 0;
 }
 
+portBASE_TYPE CApplication::readerrfid_sound_set(uint8 *pbuf, uint16 *plen)
+{
+    CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
+    uint8           rsp                     = RSP_OK;
+    uint8           i;
+    uint8           reader_id;
+    uint8           *pdata;
+    uint16          len                     = *plen;
+
+    if (pbuf[0] != m_app_runinfo.m_reader_numbs){
+        rsp                                 = RSP_INVALID_PARAM;
+        goto quit;
+    }
+    //len check
+    if (len != (1 + 2*(pbuf[0]))){
+        rsp                                 = RSP_INVALID_PARAM_LEN;
+        goto quit;
+    }
+
+    for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
+
+        pdata                               = &pbuf[1 + i*2];
+        reader_id                           = *pdata;
+        if (reader_id >= m_app_runinfo.m_reader_numbs){
+            rsp                             = RSP_INVALID_PARAM;
+            goto quit;
+        }
+        //若所写的阅读器离线  则忽略对此阅读器的写操作
+        if (DEV_OFFLINE == pdevice_rfid->reader_status_get(reader_id)){
+            continue;
+        }
+        //设置阅读器id信息
+        pdevice_rfid->reader_id_set(reader_id);
+
+        //write to rfid reader
+        if (0 != pdevice_rfid->sound_set(pdata[1])){
+            rsp                             = RSP_EXEC_FAILURE;
+            goto quit;
+        }
+    }
+quit:
+    *pbuf++                                 = rsp;
+    *plen                                   = 1;
+
+    return (rsp);
+}
+
 portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
@@ -664,6 +711,11 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
             rsp                                 = protocol_rfid_write(pbuf, len);
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
             break;
+        case def_FUNC_CODE_SOUND_SET:
+            readerrfid_sound_set(pbuf, &len);
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
+            break;
+ 
         default:
             rsp                                  = RSP_INVALID_CMD;
             pdevice_net->package_send_rsp(func_code, &rsp, sizeof(rsp));
