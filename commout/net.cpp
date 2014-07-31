@@ -1,5 +1,6 @@
 #include "net.h"
 #include <channel.h>
+#include <utils.h>
 
 
 void CDevice_net::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, uint8 total, uint8 index, uint8 func_code, uint8 *pbuf, uint16 len)

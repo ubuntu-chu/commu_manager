@@ -5,6 +5,12 @@
 extern "C" {
 #endif
 
+#ifndef NULL
+#define NULL                            ((void *)0)
+#endif
+
+#define OFFSET(Struct, Field)                           ((unsigned int)(unsigned char*)&(((Struct *)0)->Field))
+
 #define list_entry(node, type, member) \
                                                                 ((type *)((char *)(node) - (unsigned int)(&((type *)0)->member)))
 
@@ -29,14 +35,18 @@ typedef struct list_node list_head_t;
 typedef struct list_node list_node_t;
 
 #define 	list_remove(n)			list_del(n)
+#define    _INLINE_                inline
 
-void list_init(list *l)
+#if 1
+
+//void list_init(list *l);
+_INLINE_ void list_init(list *l)
 {
 	l->m_next                                                   = l; 
-    l->m_prev                                                   = l;
+	l->m_prev                                                   = l;
 }
 
-void list_insert_after(list *l, list *n)
+_INLINE_ void list_insert_after(list *l, list *n)
 {
 	l->m_next->m_prev                                           = n;
 	n->m_next                                                   = l->m_next;
@@ -45,7 +55,7 @@ void list_insert_after(list *l, list *n)
 	n->m_prev                                                   = l;
 }
 
-void list_insert_before(list *l, list *n)
+_INLINE_ void list_insert_before(list *l, list *n)
 {
 	l->m_prev->m_next                                           = n;
 	n->m_prev                                                   = l->m_prev;
@@ -54,7 +64,7 @@ void list_insert_before(list *l, list *n)
 	n->m_next                                                   = l;
 }
 
-void list_del(list *n)
+_INLINE_ void list_del(list *n)
 {
 	n->m_next->m_prev                                           = n->m_prev;
 	n->m_prev->m_next                                           = n->m_next;
@@ -63,12 +73,12 @@ void list_del(list *n)
     n->m_prev                                                   = n;
 }
 
-int list_empty(const list *l)
+_INLINE_ int list_empty(const list *l)
 {
 	return (l->m_next == l);
 }
 
-list *list_find(list_head_t *head, list_node_t *node)
+_INLINE_ list *list_find(list_head_t *head, list_node_t *node)
 {
 	list_node_t 	*it;
 
@@ -81,7 +91,7 @@ list *list_find(list_head_t *head, list_node_t *node)
 	return NULL;
 }
 
-void __list_splice(list_head_t *list,
+_INLINE_ void __list_splice(list_head_t *list,
 				 list_head_t *prev,
 				 list_head_t *next)
 {
@@ -100,7 +110,7 @@ void __list_splice(list_head_t *list,
  * @list: the new list to add.
  * @head: the place to add it in the first list.
  */
-void list_splice(list_head_t *list, list_head_t *head)
+_INLINE_ void list_splice(list_head_t *list, list_head_t *head)
 {
 	if (!list_empty(list))
 		__list_splice(list, head, head->m_next);
@@ -113,13 +123,26 @@ void list_splice(list_head_t *list, list_head_t *head)
  *
  * The list at @list is reinitialised
  */
-void list_splice_init(list_head_t *list, list_head_t *head)
+_INLINE_ void list_splice_init(list_head_t *list, list_head_t *head)
 {
 	if (!list_empty(list)) {
 		__list_splice(list, head, head->m_next);
 		list_init(list);
 	}
 }
+#else
+
+void list_init(list *l);
+void list_insert_after(list *l, list *n);
+void list_insert_before(list *l, list *n);
+void list_del(list *n);
+#define		list_remove(n)			list_del(n)
+int list_empty(const list *l);
+list *list_find(list_head_t *head, list_node_t *node);
+void list_splice(list_head_t *list, list_head_t *head);
+void list_splice_init(list_head_t *list, list_head_t *head);
+
+#endif
 
 #ifdef __cplusplus
 }

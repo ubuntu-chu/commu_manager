@@ -8,6 +8,7 @@
 
 
 int xml_parse(const char *file);
+int config_relative_set(void);
 
 
 

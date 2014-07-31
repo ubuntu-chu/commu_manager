@@ -42,6 +42,7 @@ public:
         return 0;
     }
 	process_node *process_vector_get(void){return process_vecotr_;}
+	process_node *process_node_get(int index){return &process_vecotr_[index];}
 	int process_vector_no_get(void){return index_;}
 private:
 	char   			describe_[def_DESCRIBE_MAX_LEN];

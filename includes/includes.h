@@ -4,6 +4,7 @@
 //#include    "includes-low.h"
 //#include "config.h"
 #include "shmem.h"
+#include "list.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 #include <termios.h>    /*PPSIX终端控制定义*/
 #include <time.h>
 #include <endian.h>
+#include <sys/timerfd.h>  /**/
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
@@ -36,12 +38,15 @@
 #include <boost/noncopyable.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 
-#include <tinyxml/tinyxml.h>
+#include <tinyxml.h>
 
 #include <string>
 #include <vector>
 #include <map>
 
+using std::vector;
+using std::string;
+using std::map;
 
 //base type define
 typedef unsigned char 							uint8;

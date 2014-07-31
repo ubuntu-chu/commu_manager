@@ -2,6 +2,7 @@
 #include <protocol_rfid.h>
 #include <protocol_raw.h>
 #include <channel.h>
+#include <utils.h>
 
 
 //初始化规约

@@ -24,15 +24,15 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= commout  
+PROGRAM_NAME	= parse  
 #cross compile tools defined 
 #CROSS_COMPILE ?= arm-none-linux-gnueabi-
 CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
-BUILD_TYPE		= TYPE_EXEC
+#BUILD_TYPE		= TYPE_EXEC
 #BUILD_TYPE		= TYPE_STATIC
-#BUILD_TYPE 	= TYPE_DYNAMIC
+BUILD_TYPE 	= TYPE_DYNAMIC
 
 #global directory defined
 TOPDIR       	= $(shell pwd)
@@ -41,16 +41,16 @@ SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
 LIBDIR      	= ../manager/libs
 #所引用库设置
-LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml -lparse -lutils
+LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../reactor ../boost ../tinyxml ./io_node ./protocol ./utils \
-			      ./protocol_rfid ./protocol_raw ./channel  ./ \
-			      ../includes ../parse ../utils
+INCLUDEDIR   	= ../reactor ../boost ../tinyxml \
+			      ./ \
+			      ../includes ../
 #make install INSTALL_PATH   
 #INSTALL_PATH变量可由make传递进来的参数改写
 #安装路径设置
-INSTALL_PATH 	= /home/barnard/work/commu_manager/manager/bin
+INSTALL_PATH=/home/barnard/work/commu_manager/manager/libs
 # *.o *.d 文件存放位置
 OBJDIR    		= ./objs/
 #应用程序目录设置

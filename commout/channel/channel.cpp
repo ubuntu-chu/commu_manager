@@ -32,6 +32,7 @@ bool channel::uninit(void)
 	return io_base_->uninit();
 }
 
+//目前的实现方案中 接收的帧最多只有一条 没有缓存机制 若要有缓存机制 则需要重新定义函数的返回值及镇的存储方式
 bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 {
     int i;

@@ -1,15 +1,13 @@
-#include <sys/timerfd.h>  /**/
-#include <config.h>
-#include "parse.h"
-#include "datum.h"
 #include "channel/channel.h"
 #include "./io_node/ext_client.h"
 #include "./io_node/inner_client.h"
 #include "./io_node/inner_server.h"
-#include "rfid.h"
 #include "net.h"
 #include <protocol_rfid.h>
 #include "application.h"
+#include <utils.h>
+#include <datum.h>
+#include <parse.h>
 
 
 using std::string;
@@ -39,6 +37,7 @@ void signal_handle(int sign_no)
 //---------------------------------------------------------------
 
 CApplication    *CApplication::m_pcapplicaiton = NULL;
+class project_datum  t_project_datum;
 
 static CApplication     c_application;
 
@@ -55,10 +54,8 @@ CApplication *CApplication::GetInstance(void)
 static  CDevice_Rfid       s_Device_rfid;
 static  CDevice_net        s_Device_net;
 
-
-portBASE_TYPE CApplication::init(const char *config_file_path)
+portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_file_path)
 {
-	struct sigaction action;
 	std::string      process_name_str;
 	//依据配置资源 创建channel
 //    boost::ptr_vector<channel> channel_vector;
@@ -78,29 +75,31 @@ portBASE_TYPE CApplication::init(const char *config_file_path)
             boost::bind(&CApplication::package_event_handler,
             this, _1, _2, _3));
 
-	action.sa_handler                       = signal_handle;
-    sigemptyset(&action.sa_mask);
-    action.sa_flags                         = 0;
-    sigaction(SIGINT, &action, 0);
+    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
 
 #if 0
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(::basename(argv[0]), 200 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 200 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
 
+#if 0
 	LOG_INFO << "project xml config file parse";
 	if (xml_parse(config_file_path)){
 		LOG_SYSFATAL << "project xml config file parse failed!";
 	}
-	project_config	*pproject_config     = t_project_datum.pproject_config_;
+#endif
+    t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
+	project_config	*pproject_config    = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
 //    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
-    Logger::setLogLevel(muduo::Logger::INFO);
+    Logger::setLogLevel(muduo::Logger::TRACE);
+//    Logger::setLogLevel(muduo::Logger::INFO);
+    config_relative_set();
 
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
@@ -188,7 +187,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
 {
     CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
-    uint8           loop                   = 3;
+    static uint8   s_try_loop             = 3;
     uint8           buffer[500];
     portBASE_TYPE   rt;
     uint16          len                    = 0;
@@ -204,45 +203,45 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     m_app_runinfo.m_reader_numbs            = pdevice_rfid->device_no_get();
     pdevice_rfid->reader_no_set(m_app_runinfo.m_reader_numbs);
 
-    while (loop){
+    //遍历设备链表
+    list_for_each(pos, pdevice_list_head){
+        pdevice_node        = device_node::device_entry(pos);
+        pnode_rfid_reader = reinterpret_cast<device_rfid_reader_node *>(pdevice_node);
 
-        //遍历设备链表
-        list_for_each(pos, pdevice_list_head){
-            pdevice_node        = device_node::device_entry(pos);
-            pnode_rfid_reader = reinterpret_cast<device_rfid_reader_node *>(pdevice_node);
-
-            //查询设备信息
-            pdevice_rfid->reader_id_set(pnode_rfid_reader->id_get());
-            pdevice_rfid->max_wait_time_restore();
-            rt                  = pdevice_rfid->query_readerinfo(NULL);
-            //init reader query time, power
-            if (rt == 0){
-            }
+        //查询设备信息
+        pdevice_rfid->reader_id_set(pnode_rfid_reader->id_get());
+        pdevice_rfid->max_wait_time_restore();
+        rt                  = pdevice_rfid->query_readerinfo(NULL);
+        //init reader query time, power
+        if (rt == 0){
         }
-        rfid_device_online_no               = pdevice_rfid->rfid_device_online_no_get();
-        LOG_INFO << "rfid device config no [" << m_app_runinfo.m_reader_numbs
-                << "]; exist no [" << rfid_device_online_no
-                << "], now call pdevice_net->package_send_readerinfo with loop = ["
-                << loop << "]";
-        //when no reader exist, reader_numbs = 0
-        //send reader info  to host
-        content_readerinfo_make(buffer, &len);
-        rt     = pdevice_net->package_send_readerinfo((char *)buffer, len);
+    }
+    rfid_device_online_no               = pdevice_rfid->rfid_device_online_no_get();
+    LOG_INFO << "rfid device config no [" << m_app_runinfo.m_reader_numbs
+            << "]; exist no [" << rfid_device_online_no
+            << "], now call pdevice_net->package_send_readerinfo with loop = ["
+            << s_try_loop << "]";
+    //when no reader exist, reader_numbs = 0
+    //send reader info  to host
+    content_readerinfo_make(buffer, &len);
+    rt     = pdevice_net->package_send_readerinfo((char *)buffer, len);
 
-        utils::log_binary_buf("CApplication::readerrfid_init",
-                reinterpret_cast<const char *>(buffer), len);
+    utils::log_binary_buf("CApplication::readerrfid_init",
+            reinterpret_cast<const char *>(buffer), len);
 
-        if (0 == rfid_device_online_no){
-            LOG_INFO << "err:no rfid reader find!";
-            continue;
-        }
-        if (rt != 0){
-            LOG_WARN << "no respond from remote, sleep 1 and try again; loop = [" << loop << "]";
-            sleep(1);
-//            loop--;
-        }else {
-            break;
-        }
+    if (0 == rfid_device_online_no){
+        LOG_INFO << "err:no rfid reader find! try scan again!";
+        sleep(1);
+        return -1;
+    }
+    if (rt != 0){
+        LOG_WARN << "no respond from remote, sleep 1 and try again; loop = [" << s_try_loop << "]";
+        sleep(1);
+
+        return (s_try_loop-- == 0)?(0):(-2);
+    }else {
+        //发送一次设备在线信息给后台   让后台更新设备状态
+        device_status_send();
     }
 #if 0
     //1s time
@@ -726,27 +725,54 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
     return 0;
 }
 
+void CApplication::exit_chk(void)
+{
+    //判断父进程是否为1  若为1  则父进程为init进程  代表创建此进程的父进程已经退出  则自己也退出
+    if (getppid() == 1){
+        LOG_INFO << "parent process exit, send sigkill to myself";
+        raise (SIGKILL);
+    }
+}
+
 portBASE_TYPE CApplication::run()
 {
     CDevice_net *pdevice_net                = m_app_runinfo.m_pdevice_net;
 
-	m_app_runinfo.m_status                  = enum_APP_STATUS_RUN;
-    readerrfid_init();
-    //发送一次设备在线信息给后台
-    device_status_send();
+	m_app_runinfo.m_status                  = enum_APP_STATUS_SEND_READERINFO;
 
-    while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
-        if (m_app_runinfo.m_mode == MODE_INITIATIVE){
-
-            protocol_rfid_read();
-            if (timer_timeout_occured()){
-                device_status_send();
+    while(m_app_runinfo.m_status != enum_APP_STATUS_EXIT){
+        switch (m_app_runinfo.m_status){
+        case enum_APP_STATUS_SEND_READERINFO:
+        {
+            if (0 == readerrfid_init()){
+                m_app_runinfo.m_status      = enum_APP_STATUS_RUN;
             }
-            sleep(1);
-        }else {
-
         }
-        pdevice_net->package_event_fetch();
+            break;
+
+        case enum_APP_STATUS_RUN:
+            //主动模式下
+            if (m_app_runinfo.m_mode == MODE_INITIATIVE){
+
+                protocol_rfid_read();
+                if (timer_timeout_occured()){
+                    device_status_send();
+                }
+                sleep(1);
+            }else {
+
+            }
+            pdevice_net->package_event_fetch();
+            break;
+
+        default:
+            break;
+        }
+        //判断父进程是否为1  若为1  则父进程为init进程  代表创建此进程的父进程已经退出  则自己也退出
+        if (getppid() == 1){
+            LOG_WARN << "parent process exit, send sigkill to myself";
+            raise (SIGKILL);
+        }
     }
 
     return 0;
@@ -754,23 +780,12 @@ portBASE_TYPE CApplication::run()
 
 int main(int argc, char**argv)
 {
-	const char *config_file_path = "/home/barnard/work/commu_manager/manager/config/config.xml";
 	CApplication  *pcapplication;
 
-	argc 			= 2;
-
-#if 0
-	config_file_path 	= argv[1];
-#endif
-	if (argc != 2){
-		LOG_SYSFATAL << "argc must = 2" << getpid();
-	}
-
 	pcapplication                   = CApplication::GetInstance();
-    pcapplication->init(config_file_path);
+    pcapplication->init(::basename(argv[0]), NULL);
     pcapplication->run();
 
-//    device_rfid.reader_id_set(0);
 	LOG_INFO << "program exit";
 	//删除共享内存
 	t_project_datum.shmem_.detach();

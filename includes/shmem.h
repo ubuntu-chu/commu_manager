@@ -24,7 +24,8 @@ public:
 		if ((id_ = shmget(key, def_SHMEM_SIZE, 0666|IPC_CREAT)) == (int)(-1)){
 			LOG_SYSFATAL << "Failed to obtain shared memory ID";
 		}
-        LOG_INFO << "shmget succ, size = " << def_SHMEM_SIZE;
+        LOG_INFO << "shmget succ, key = " << muduo::Fmt("0x%x", key) 
+                << " shmid = " << id_ << " size = " << def_SHMEM_SIZE;
 	}
 	~shmem()
 	{

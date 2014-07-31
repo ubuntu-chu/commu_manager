@@ -1,5 +1,6 @@
 #include "io_base.h"
 #include <channel.h>
+#include <utils.h>
 
 //初始化通信介质
 bool io_base::init(void)

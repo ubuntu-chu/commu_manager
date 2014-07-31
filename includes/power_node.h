@@ -23,11 +23,11 @@ public:
 	bool power_exist_chk(void)
 	{
 	    fd_ = open(path_, O_RDWR);
-	    return (-1 == fd_)?(false):(true);
+	    return (fd_ < 0)?(false):(true);
 	}
 	bool power_ctrl(char value)
 	{
-	    if (-1 == fd_){
+	    if (fd_ < 0){
 	        return false;
 	    }
 	    if (sizeof(value) == write(fd_, &value, sizeof(value))){

@@ -236,6 +236,7 @@ com::com(EventLoop* loop, const char *name, io_node *pio_node) :
 
 bool com::init(void)
 {
+    LOG_INFO << "com::_init  run in loop";
     loop_->runInLoop(boost::bind(&com::_init, this));
 
     return true;

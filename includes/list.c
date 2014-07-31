@@ -1,6 +1,7 @@
 #include "list.h"
 
 
+#if 0
 void list_init(list *l)
 {
 	l->m_next                                                   = l; 
@@ -92,4 +93,6 @@ void list_splice_init(list_head_t *list, list_head_t *head)
 	}
 }
 
+
+#endif
 

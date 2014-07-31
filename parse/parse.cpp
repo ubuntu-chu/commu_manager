@@ -327,7 +327,7 @@ int config_relative_set(void)
 {
         //将工程配置信息写入到共享内存后 重新更新引用的值
 	project_config	*pproject_config     = t_project_datum.pproject_config_;
-//	power_config 	&power_conf	        = pproject_config->power_config_get();
+	power_config 	&power_conf	        = pproject_config->power_config_get();
 //	process_config 	&process_conf	    = pproject_config->process_config_get();
 //	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
 	io_config       &io_conf	        = pproject_config->io_config_get();
@@ -349,6 +349,14 @@ int config_relative_set(void)
             pio_node                    = io_conf.io_vector_get(i, j);
             phead                       = pio_node->device_list_head_get();
             list_init(phead);
+            //初始化通道电源组
+            if (i == IO_TYPE_EXT_COM){
+                //与power_node建立联系
+                reinterpret_cast<io_com_node *>(pio_node)
+                        ->power_node_set(power_conf.power_node_get(
+                                reinterpret_cast<io_com_node *>(pio_node)
+                                ->power_group_get()));
+            }
         }
     }
     //将设备挂接到所属io_node的设备链表上
@@ -641,9 +649,6 @@ int xml_parse(const char *path)
             }else if (0 == strcmp(def_POWER_GROUP_STRING , pAttr->Name())){
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->power_group_set(pAttr->Value());
-                //与power_node建立联系
-                reinterpret_cast<io_com_node *>(pio_node)
-                        ->power_node_set(power_conf.power_node_get(pAttr->Value()));
             }
         }
         io_conf.io_vector_no_inc(type);
@@ -712,7 +717,7 @@ int xml_parse(const char *path)
     }
 
     //将工程配置信息写入到共享内存中
-    LOG_INFO << "size = " << sizeof(t_project_config);
+    LOG_INFO << "project_config size = " << sizeof(t_project_config);
 	//*reinterpret_cast<project_config *>(pshmem_addr) 	    = t_project_config;
     memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
     t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);

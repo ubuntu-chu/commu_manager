@@ -24,7 +24,7 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= commout  
+PROGRAM_NAME	= zygote  
 #cross compile tools defined 
 #CROSS_COMPILE ?= arm-none-linux-gnueabi-
 CROSS_COMPILE ?=
@@ -44,8 +44,8 @@ LIBDIR      	= ../manager/libs
 LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml -lparse -lutils
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../reactor ../boost ../tinyxml ./io_node ./protocol ./utils \
-			      ./protocol_rfid ./protocol_raw ./channel  ./ \
+INCLUDEDIR   	= ../reactor ../boost ../tinyxml \
+			      ./ \
 			      ../includes ../parse ../utils
 #make install INSTALL_PATH   
 #INSTALL_PATH变量可由make传递进来的参数改写
