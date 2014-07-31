@@ -14,6 +14,7 @@ struct _app_runinfo_{
     int                                 timer_fd_;
 
     map<pid_t, process_node *>          map_pid_;
+    const char *                       config_file_path_;
 
 
 };
@@ -30,7 +31,7 @@ public:
     void quit(void);
     void exit_code_analyze(pid_t pid, int status);
 
-    pid_t fork_subproc(const char *path);
+    pid_t fork_subproc(const char *path, char *const argv[]);
 private:
     zygote(const zygote &other);
     zygote &operator =(const zygote &other);

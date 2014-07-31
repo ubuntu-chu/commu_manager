@@ -10,8 +10,6 @@
 using namespace muduo;
 using namespace muduo::net;
 
-class project_config;
-
 class project_datum{
 public:
     project_datum(){}
@@ -24,8 +22,9 @@ public:
 
 
 //private:
-    class shmem		    shmem_;
-    project_config      *pproject_config_;
+//    class shmem		    shmem_;
+//    project_config      *pproject_config_;
+    project_config      project_config_;
     EventLoop           *pevent_loop_;
 
 };

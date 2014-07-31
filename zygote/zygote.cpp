@@ -56,6 +56,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 	std::string      process_name_str;
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_INIT;
+	m_app_runinfo.config_file_path_         = log_file_path;
 //    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
@@ -72,7 +73,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 	if (xml_parse(config_file_path)){
 		LOG_SYSFATAL << "project xml config file parse failed!";
 	}
-    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.pproject_config_->log_lev_get()));
+    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
 //    Logger::setLogLevel(muduo::Logger::INFO);
 
     return 0;
@@ -94,7 +95,7 @@ void zygote::exit_code_analyze(pid_t pid, int status)
     }
 }
 
-pid_t zygote::fork_subproc(const char *path)
+pid_t zygote::fork_subproc(const char *path, char *const argv[])
 {
     pid_t pid;
 
@@ -105,7 +106,7 @@ pid_t zygote::fork_subproc(const char *path)
     }
     //子进程
     if (pid == 0) {
-        int ret                             = execlp(path, path, (char *)0);
+        int ret                             = execvp(path, argv);
         if (ret < 0) {
             LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
                     << "] error msg:<" << strerror(errno) << "<";
@@ -119,25 +120,30 @@ pid_t zygote::fork_subproc(const char *path)
 portBASE_TYPE zygote::run()
 {
 	m_app_runinfo.m_status                  = enum_APP_STATUS_RUN;
-	project_config	*pproject_config        = t_project_datum.pproject_config_;
+//	project_config	*pproject_config        = t_project_datum.pproject_config_;
+	project_config	*pproject_config        = &t_project_datum.project_config_;
 	process_config  &process_conf	        = pproject_config->process_config_get();
 	process_node    *pprocess_node;
 	int             process_vector_no       = process_conf.process_vector_no_get();
 	int             i, status;
     pid_t pid;
     map<pid_t, process_node *>::iterator it;
+    const char *child_argv[100] = {0};
+
 
 	m_app_runinfo.map_pid_.clear();
     while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
         //依据配置文件创建进程
         for (i = 0; i < process_vector_no; i++){
             pprocess_node                   = process_conf.process_node_get(i);
-            pid                             = fork_subproc(pprocess_node->file_path_get());
+
+            child_argv[0]                   = pprocess_node->file_path_get();
+            child_argv[1]                   = m_app_runinfo.config_file_path_;
+            pid                             = fork_subproc(child_argv[0], (char **)child_argv);
 
             LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
                     << "] path:<" << pprocess_node->file_path_get() << ">";
             m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
-            sleep(2);
         }
 
         while (1){
@@ -158,7 +164,7 @@ portBASE_TYPE zygote::run()
                 continue;
             }else {
                 pprocess_node                       = it->second;
-                pid                                 = fork_subproc(pprocess_node->file_path_get());
+                pid                                 = fork_subproc(child_argv[0], (char **)child_argv);
                 LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
                         << "] path:<" << pprocess_node->file_path_get() << ">";
                 //将此条目删除  已经无用
@@ -197,7 +203,7 @@ int main(int argc, char**argv)
 
 	LOG_INFO << "program exit";
 	//删除共享内存
-	t_project_datum.shmem_.detach();
+//	t_project_datum.shmem_.detach();
 }
 
 

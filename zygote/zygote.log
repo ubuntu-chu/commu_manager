@@ -1,0 +1,9 @@
+20140731 10:14:49.029071Z  9179 INFO  project xml config file parse - zygote.cpp:71
+20140731 10:15:33.900636Z  9179 INFO  project_config size = 17272 - parse.cpp:723
+20140731 10:15:57.266548Z  9301 ERROR execu ret:[-1] errno:[2] error msg:<No such file or directory< - zygote.cpp:110
+20140731 10:15:59.523805Z  9179 INFO  fork to exec subprocess name:[rfid_manager_1] path:<rfid_manager_1> - zygote.cpp:138
+20140731 10:16:03.291279Z  9314 ERROR execu ret:[-1] errno:[2] error msg:<No such file or directory< - zygote.cpp:110
+20140731 10:16:04.000677Z  9179 INFO  fork to exec subprocess name:[rfid_manager_2] path:<rfid_manager_2> - zygote.cpp:138
+20140731 10:16:06.100776Z  9179 INFO  zygote wait begin - zygote.cpp:144
+20140731 10:16:07.147946Z  9179 INFO  zygote wait end - zygote.cpp:146
+20140731 10:16:08.385758Z  9179 WARN  pid = [9301] path:<rfid_manager_1> terminated normally, exit status = [0] - zygote.cpp:86

@@ -326,7 +326,8 @@ bool xml_AddNode_Attribute(TiXmlElement *pRootEle, std::string strParNodeName,
 int config_relative_set(void)
 {
         //将工程配置信息写入到共享内存后 重新更新引用的值
-	project_config	*pproject_config     = t_project_datum.pproject_config_;
+//	project_config	*pproject_config     = t_project_datum.pproject_config_;
+	project_config	*pproject_config    = &t_project_datum.project_config_;
 	power_config 	&power_conf	        = pproject_config->power_config_get();
 //	process_config 	&process_conf	    = pproject_config->process_config_get();
 //	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
@@ -422,7 +423,7 @@ int config_relative_set(void)
 
 int xml_parse(const char *path)
 {
-#if 1
+#if 0
 	void	        *pshmem_addr 	    = reinterpret_cast<void *>(t_project_datum.shmem_.attach());
 	project_config	t_project_config;
 	power_config 	&power_conf	        = t_project_config.power_config_get();
@@ -431,7 +432,9 @@ int xml_parse(const char *path)
 	io_config       &io_conf	        = t_project_config.io_config_get();
 	device_config   &device_conf	    = t_project_config.device_config_get();
 #else
-	project_config  *pproject_config    = reinterpret_cast<project_config *>(t_shmem.attach());
+//	project_config  *pproject_config    = reinterpret_cast<project_config *>(t_shmem.attach());
+	project_config	*pproject_config    = &t_project_datum.project_config_;
+	power_config 	&power_conf	        = pproject_config->power_config_get();
 	process_config 	&process_conf	    = pproject_config->process_config_get();
 	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
 	io_config       &io_conf	        = pproject_config->io_config_get();
@@ -456,17 +459,17 @@ int xml_parse(const char *path)
 	    return  -1;
     }
     if (0 == strcmp(def_LOG_LEV_TRACE, value.c_str())){
-        t_project_config.log_lev_set(Logger::TRACE);
+        pproject_config->log_lev_set(Logger::TRACE);
     }else if (0 == strcmp(def_LOG_LEV_DEBUG , value.c_str())){
-        t_project_config.log_lev_set(Logger::DEBUG);
+        pproject_config->log_lev_set(Logger::DEBUG);
     }else if (0 == strcmp(def_LOG_LEV_INFO , value.c_str())){
-        t_project_config.log_lev_set(Logger::INFO);
+        pproject_config->log_lev_set(Logger::INFO);
     }else if (0 == strcmp(def_LOG_LEV_WARN , value.c_str())){
-        t_project_config.log_lev_set(Logger::WARN);
+        pproject_config->log_lev_set(Logger::WARN);
     }else if (0 == strcmp(def_LOG_LEV_ERROR , value.c_str())){
-        t_project_config.log_lev_set(Logger::ERROR);
+        pproject_config->log_lev_set(Logger::ERROR);
     }else if (0 == strcmp(def_LOG_LEV_FATAL , value.c_str())){
-        t_project_config.log_lev_set(Logger::FATAL);
+        pproject_config->log_lev_set(Logger::FATAL);
     }
 
 	//解析power配置信息
@@ -717,10 +720,10 @@ int xml_parse(const char *path)
     }
 
     //将工程配置信息写入到共享内存中
-    LOG_INFO << "project_config size = " << sizeof(t_project_config);
+    LOG_INFO << "project_config size = " << sizeof(project_config);
 	//*reinterpret_cast<project_config *>(pshmem_addr) 	    = t_project_config;
-    memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
-    t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);
+//    memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
+//    t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);
 
     config_relative_set();
 

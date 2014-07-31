@@ -90,18 +90,16 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     muduo::Logger::setFlush(flushFunc);
 #endif
 
-#if 0
 	LOG_INFO << "project xml config file parse";
 	if (xml_parse(config_file_path)){
 		LOG_SYSFATAL << "project xml config file parse failed!";
 	}
-#endif
-    t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
-	project_config	*pproject_config    = t_project_datum.pproject_config_;
+//    t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
+	project_config	*pproject_config    = &t_project_datum.project_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
-    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
+//    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
+    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
 //    Logger::setLogLevel(muduo::Logger::INFO);
-    config_relative_set();
 
     LOG_INFO  << "CApplication::init------------------------";
 
@@ -786,13 +784,16 @@ int main(int argc, char**argv)
 {
 	CApplication  *pcapplication;
 
+	if (argc != 2){
+		LOG_SYSFATAL << "argc must = 2" << getpid();
+	}
 	pcapplication                   = CApplication::GetInstance();
-    pcapplication->init(::basename(argv[0]), NULL);
+    pcapplication->init(::basename(argv[0]), argv[1]);
     pcapplication->run();
 
 	LOG_INFO << "program exit";
 	//删除共享内存
-	t_project_datum.shmem_.detach();
+//	t_project_datum.shmem_.detach();
 }
 
 
