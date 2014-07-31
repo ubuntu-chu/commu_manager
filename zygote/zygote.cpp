@@ -12,12 +12,15 @@ boost::scoped_ptr<muduo::LogFile> g_logFile;
 
 void outputFunc(const char* msg, int len)
 {
-  g_logFile->append(msg, len);
+    g_logFile->append(msg, len);
+    //因为在使用文件作为日志时  写入的数据存放在fp所自带的缓冲区中 并没有真正的写入文件 所以执行
+    //flush强制进行写入
+    g_logFile->flush();
 }
 
 void flushFunc()
 {
-  g_logFile->flush();
+    g_logFile->flush();
 }
 
 using namespace muduo;
@@ -53,7 +56,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 	std::string      process_name_str;
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_INIT;
-    utils::signal_handler_install(SIGINT, signal_handle);
+//    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
@@ -75,52 +78,95 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     return 0;
 }
 
+void zygote::exit_code_analyze(pid_t pid, int status)
+{
+    if (-1 == pid){
+        LOG_WARN << "Failed to wait for child. errno:[" << errno << "] error msg:<" << strerror(errno) << "<";
+    }else if (WIFEXITED(status)){
+        LOG_WARN << "pid = [" << pid << "] path:<" << m_app_runinfo.map_pid_[pid]->file_path_get()
+                 << "> terminated normally, exit status = [" << WEXITSTATUS(status) << "]";
+    }else if (WIFSIGNALED(status)){
+        LOG_WARN << "pid = [" << pid << "] path:<" << m_app_runinfo.map_pid_[pid]->file_path_get()
+                 << "> terminated abnormal due to uncaught signal = [" << WTERMSIG(status) << "]";
+    }else if (WIFSTOPPED(status)){
+        LOG_WARN << "pid = [" << pid << "] path:<" << m_app_runinfo.map_pid_[pid]->file_path_get()
+                 << "> child stopped due to signal = [" << WSTOPSIG(status) << "]";
+    }
+}
+
+pid_t zygote::fork_subproc(const char *path)
+{
+    pid_t pid;
+
+    pid                             = fork();
+    if (pid == -1) {
+        LOG_WARN << "fork() err. errno:[" << errno << "] error msg:<" << strerror(errno) << "<";
+        exit(1);
+    }
+    //子进程
+    if (pid == 0) {
+        int ret                             = execlp(path, path, (char *)0);
+        if (ret < 0) {
+            LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
+                    << "] error msg:<" << strerror(errno) << "<";
+        }
+        exit(0);
+    }
+
+    return pid;
+}
+
 portBASE_TYPE zygote::run()
 {
 	m_app_runinfo.m_status                  = enum_APP_STATUS_RUN;
 	project_config	*pproject_config        = t_project_datum.pproject_config_;
 	process_config  &process_conf	        = pproject_config->process_config_get();
-	process_node    *process_node;
+	process_node    *pprocess_node;
 	int             process_vector_no       = process_conf.process_vector_no_get();
-	int             i, ret, status;
-	const  char    *path;
+	int             i, status;
     pid_t pid;
+    map<pid_t, process_node *>::iterator it;
 
-	m_app_runinfo.vec_pid_.clear();
+	m_app_runinfo.map_pid_.clear();
     while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
         //依据配置文件创建进程
         for (i = 0; i < process_vector_no; i++){
-            process_node                    = process_conf.process_node_get(i);
-            path                            = process_node->file_path_get();
+            pprocess_node                   = process_conf.process_node_get(i);
+            pid                             = fork_subproc(pprocess_node->file_path_get());
 
-            pid                             = fork();
-            if (pid == -1) {
-                LOG_WARN << "fork() err. errno:[" << errno << "] error msg:<" << strerror(errno) << "<";
-            }
-            //子进程
-            if (pid == 0) {
-                ret                         = execlp(path, path, (char *)0);
-                if (ret < 0) {
-                    LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
-                            << "] error msg:<" << strerror(errno) << "<";
-                    continue;
-                }
-                exit(0);
-            }
-
-            LOG_INFO << "fork to exec subprocess name:[" << process_node->name_get()
-                    << "] path:<" << process_node->file_path_get() << ">";
-            //父进程
-            m_app_runinfo.vec_pid_.push_back(pid);
-            m_app_runinfo.map_pid_.insert(pair<pid_t, const char*>(pid, path));
+            LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
+                    << "] path:<" << pprocess_node->file_path_get() << ">";
+            m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
+            sleep(2);
         }
 
-        LOG_INFO << "zygote wait begin";
-        if (pid > 0) {
-            pid = wait(&status);
-            LOG_INFO << "wait return";
-        }
+        while (1){
+            LOG_INFO << "zygote wait begin";
+            while (((pid = wait(&status)) == -1) && (errno == EINTR)) ;
+            LOG_INFO << "zygote wait end";
 
+            //分析进程退出原因
+            exit_code_analyze(pid, status);
+            if (-1 == pid){
+                LOG_ERROR << "wait err. errno:[" << errno << "] error msg:<" << strerror(errno) << "<";
+                continue;
+            }
+
+            it                                      = m_app_runinfo.map_pid_.find(pid);
+            if(it == m_app_runinfo.map_pid_.end()){
+                LOG_ERROR << "an unknown sub process exit!";
+                continue;
+            }else {
+                pprocess_node                       = it->second;
+                pid                                 = fork_subproc(pprocess_node->file_path_get());
+                LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
+                        << "] path:<" << pprocess_node->file_path_get() << ">";
+                //将此条目删除  已经无用
+                m_app_runinfo.map_pid_.erase(it);
+                //添加新条目到map中
+                m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
+            }
+        }
     }
 
     return 0;

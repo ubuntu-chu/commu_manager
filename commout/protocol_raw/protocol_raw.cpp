@@ -196,8 +196,8 @@ int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipac
 #endif
 
 quit:
-//    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;
-    LOG_WARN << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;
+    LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;
+
     return rt;
 }
 

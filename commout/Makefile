@@ -325,10 +325,12 @@ else
 	$(STRIP)  --strip-unneeded $(PROGRAMDIR)/$(PROGRAM)
 endif
 
+prog_suffix := 1 2 3 4 5 6
 install:
 	$(shell if ! [ -d $(INSTALL_PATH) ] ; then \
 			mkdir -p $(INSTALL_PATH) ; fi)
-	cp $(PROGRAMDIR)/* $(INSTALL_PATH)
+#	cp $(PROGRAMDIR)/* $(INSTALL_PATH)
+	$(foreach n, $(prog_suffix), $(shell cp $(PROGRAMDIR)/$(PROGRAM) $(INSTALL_PATH)/rfid_manager_$(n)))
 
 # Show help.
 help:

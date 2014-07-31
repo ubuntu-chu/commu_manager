@@ -16,12 +16,15 @@ boost::scoped_ptr<muduo::LogFile> g_logFile;
 
 void outputFunc(const char* msg, int len)
 {
-  g_logFile->append(msg, len);
+    g_logFile->append(msg, len);
+    //因为在使用文件作为日志时  写入的数据存放在fp所自带的缓冲区中 并没有真正的写入文件 所以执行
+    //flush强制进行写入
+    g_logFile->flush();
 }
 
 void flushFunc()
 {
-  g_logFile->flush();
+    g_logFile->flush();
 }
 
 using namespace muduo;
@@ -80,7 +83,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
 
-#if 0
+#if 1
     //设置日志文件名称
     g_logFile.reset(new muduo::LogFile(log_file_path, 200 * 1000));
     muduo::Logger::setOutput(outputFunc);
@@ -96,10 +99,11 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
 	project_config	*pproject_config    = t_project_datum.pproject_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
-//    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
-    Logger::setLogLevel(muduo::Logger::TRACE);
+    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
 //    Logger::setLogLevel(muduo::Logger::INFO);
     config_relative_set();
+
+    LOG_INFO  << "CApplication::init------------------------";
 
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
@@ -230,7 +234,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
             reinterpret_cast<const char *>(buffer), len);
 
     if (0 == rfid_device_online_no){
-        LOG_INFO << "err:no rfid reader find! try scan again!";
+        LOG_WARN << "err:no rfid reader find! try scan again!";
         sleep(1);
         return -1;
     }
@@ -477,7 +481,7 @@ portBASE_TYPE CApplication::containerrfid_w_data(CDevice_Rfid   *pdevice_rfid, u
         t_writeinfo.m_wnum          = user_region_len;
 
         if ((rt = pdevice_rfid->write_data(&t_writeinfo, pdata))){
-            LOG_INFO << "-----err:write data!try_cnt = [" << try_cnt << "]";
+            LOG_WARN << "-----err:write data!try_cnt = [" << try_cnt << "]";
         }
         if (0 == rt){
             break;
@@ -485,7 +489,7 @@ portBASE_TYPE CApplication::containerrfid_w_data(CDevice_Rfid   *pdevice_rfid, u
         try_cnt--;
     }
     if (try_cnt == 0){
-        LOG_INFO << "-----final err:write data!";
+        LOG_ERROR << "-----final err:write data!";
     }
 
     return (try_cnt == 0)?(-1):(0);

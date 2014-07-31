@@ -117,7 +117,7 @@ protocol *protocol::protocol_create(const char *name)
 {
     protocol *pprotocol = NULL;
 
-    LOG_INFO << "protocol[" << name << "] will be created!";
+    LOG_TRACE << "protocol[" << name << "] will be created!";
     if (0 == strcmp(def_PROTOCOL_RFID_NAME, name)){
         pprotocol                   = new protocol_rfid();
     }else if (0 == strcmp(def_PROTOCOL_MAC_NAME, name)){

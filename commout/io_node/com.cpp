@@ -231,12 +231,12 @@ int dev_write(int fd, const char *str, int len){
 com::com(EventLoop* loop, const char *name, io_node *pio_node) :
         io_base(pio_node), loop_(loop)
 {
-    LOG_INFO << "IO_TYPE_EXT_COM create; name = " << name;
+    LOG_TRACE << "IO_TYPE_EXT_COM create; name = " << name;
 }
 
 bool com::init(void)
 {
-    LOG_INFO << "com::_init  run in loop";
+    LOG_TRACE << "com::_init  run in loop";
     loop_->runInLoop(boost::bind(&com::_init, this));
 
     return true;
@@ -254,7 +254,7 @@ bool com::_init(void)
 	pio_com_ext_node->ios_get(&com_path, bps, stop, bits, parity);
 
 	parity_print                        = parity;
-    LOG_INFO << "device: " << com_path << " bps: " << bps << " stop: " << stop
+    LOG_DEBUG << "device: " << com_path << " bps: " << bps << " stop: " << stop
             << " bits: " << bits << " parity: " << parity_print;
 
     connected_                          = false;
@@ -275,9 +275,9 @@ bool com::_init(void)
     channel_.reset(new Channel(loop_, fd_));
     channel_->setReadCallback(
         boost::bind(&com::handle_read, this, _1));
-    LOG_INFO << "enable channel readable begin";
+    LOG_TRACE << "enable channel readable begin";
     channel_->enableReading();
-    LOG_INFO << "enable channel readable end";
+    LOG_TRACE << "enable channel readable end";
 
     return true;
 }

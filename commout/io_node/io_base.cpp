@@ -74,7 +74,7 @@ void io_base::send_status_end(int len)
         pchannel_->send_status_set(false);
     }
     if (len != len_){
-        LOG_INFO << pio_node_->name_get() << " io_base::" << __func__
+        LOG_WARN << pio_node_->name_get() << " io_base::" << __func__
                 << " send failed!; expected [" << len_ << "] actual ["
                 << len << "]";
     }
@@ -94,7 +94,7 @@ bool io_base::power_ctrl(char value)
     if (false == rt){
         const char *msg[]     = {" power_on", " power_off"};
 
-        LOG_INFO << pio_node_->name_get() << " io_base::" << __func__ << msg[value - '0'] << " failed!";
+        LOG_WARN << pio_node_->name_get() << " io_base::" << __func__ << msg[value - '0'] << " failed!";
     }
 
     return rt;
