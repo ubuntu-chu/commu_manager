@@ -24,10 +24,10 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= zygote  
+PROGRAM_NAME	= DAEMON  
 #cross compile tools defined 
-#CROSS_COMPILE ?= arm-none-linux-gnueabi-
-CROSS_COMPILE ?=
+CROSS_COMPILE ?= arm-none-linux-gnueabi-
+#CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
 BUILD_TYPE		= TYPE_EXEC
@@ -39,12 +39,12 @@ TOPDIR       	= $(shell pwd)
 #SRCDIR	 		= $(TOPDIR)/src
 SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
-LIBDIR      	= ../manager/libs
+LIBDIR      	= ../manager/lib
 #所引用库设置
 LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml -lparse -lutils
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../reactor ../boost ../tinyxml \
+INCLUDEDIR   	= ../reactor ../ ../tinyxml \
 			      ./ \
 			      ../includes ../parse ../utils
 #make install INSTALL_PATH   

@@ -193,7 +193,8 @@ void zygote::quit(void)
 
 int main(int argc, char**argv)
 {
-	const char *config_file_path = "/home/barnard/work/commu_manager/manager/config/config.xml";
+	const char *config_file_path;
+	char log_file_path[100]       = "../log/";
 	zygote  *pzygote;
 
 	argc 			= 2;
@@ -205,8 +206,13 @@ int main(int argc, char**argv)
 		LOG_SYSFATAL << "argc must = 2" << getpid();
 	}
 
+	strcat(log_file_path, ::basename(argv[0]));
+//	config_file_path = "/home/barnard/work/commu_manager/manager/config/config.xml";
+//	config_file_path          = argv[1];
+	config_file_path          = "../config/config.xml";
+
 	pzygote                   = zygote::GetInstance();
-    pzygote->init(::basename(argv[0]), config_file_path);
+    pzygote->init(log_file_path, config_file_path);
     pzygote->run();
 
 	LOG_INFO << "program exit";

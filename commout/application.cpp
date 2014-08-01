@@ -798,12 +798,15 @@ portBASE_TYPE CApplication::run()
 int main(int argc, char**argv)
 {
 	CApplication  *pcapplication;
+	char log_file_path[100]       = "../log/";
 
 	if (argc != 2){
 		LOG_SYSFATAL << "argc must = 2" << getpid();
 	}
+	strcat(log_file_path, ::basename(argv[0]));
+
 	pcapplication                   = CApplication::GetInstance();
-    pcapplication->init(::basename(argv[0]), argv[1]);
+    pcapplication->init(log_file_path, argv[1]);
     pcapplication->run();
 
 	LOG_INFO << "program exit";

@@ -231,7 +231,7 @@ int dev_write(int fd, const char *str, int len){
 com::com(EventLoop* loop, const char *name, io_node *pio_node) :
         io_base(pio_node), loop_(loop)
 {
-    LOG_TRACE << "IO_TYPE_EXT_COM create; name = " << name;
+    LOG_INFO << "IO_TYPE_EXT_COM create; name = " << name;
 }
 
 bool com::init(void)
@@ -254,7 +254,7 @@ bool com::_init(void)
 	pio_com_ext_node->ios_get(&com_path, bps, stop, bits, parity);
 
 	parity_print                        = parity;
-    LOG_DEBUG << "device: " << com_path << " bps: " << bps << " stop: " << stop
+    LOG_INFO << "device: " << com_path << " bps: " << bps << " stop: " << stop
             << " bits: " << bits << " parity: " << parity_print;
 
     connected_                          = false;

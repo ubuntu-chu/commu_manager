@@ -26,8 +26,8 @@ BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
 PROGRAM_NAME	= utils  
 #cross compile tools defined 
-#CROSS_COMPILE ?= arm-none-linux-gnueabi-
-CROSS_COMPILE ?=
+CROSS_COMPILE ?= arm-none-linux-gnueabi-
+#CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
 #BUILD_TYPE		= TYPE_EXEC
@@ -50,7 +50,7 @@ INCLUDEDIR   	= ../reactor ../boost ../tinyxml \
 #make install INSTALL_PATH   
 #INSTALL_PATH变量可由make传递进来的参数改写
 #安装路径设置
-INSTALL_PATH=/home/barnard/work/commu_manager/manager/libs
+INSTALL_PATH=/home/barnard/work/commu_manager/manager/lib
 # *.o *.d 文件存放位置
 OBJDIR    		= ./objs/
 #应用程序目录设置

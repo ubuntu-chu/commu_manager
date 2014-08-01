@@ -8,7 +8,7 @@ ext_client::ext_client(EventLoop* loop,
 {
     io_tcp_ext_client_node *pio_tcp_ext_client_node =
             reinterpret_cast<io_tcp_ext_client_node *>(const_cast<io_node *>(pio_node));
-    LOG_TRACE << "IO_TYPE_EXT_CLIENT create; serverip = " << listenAddr.toIpPort()\
+    LOG_INFO << "IO_TYPE_EXT_CLIENT create; serverip = " << listenAddr.toIpPort()\
             << " local ip = " << pio_tcp_ext_client_node->client_ip_get();
 
 
@@ -22,7 +22,7 @@ ext_client::ext_client(EventLoop* loop,
 
 void ext_client::onConnection(const TcpConnectionPtr& conn)
 {
-    LOG_TRACE << conn->localAddress().toIpPort() << " -> "
+    LOG_INFO << conn->localAddress().toIpPort() << " -> "
             << conn->peerAddress().toIpPort() << " is "
             << (conn->connected() ? "UP" : "DOWN");
 

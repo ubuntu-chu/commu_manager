@@ -26,8 +26,8 @@ BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
 PROGRAM_NAME	= commout  
 #cross compile tools defined 
-#CROSS_COMPILE ?= arm-none-linux-gnueabi-
-CROSS_COMPILE ?=
+CROSS_COMPILE ?= arm-none-linux-gnueabi-
+#CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
 BUILD_TYPE		= TYPE_EXEC
@@ -39,12 +39,12 @@ TOPDIR       	= $(shell pwd)
 #SRCDIR	 		= $(TOPDIR)/src
 SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
-LIBDIR      	= ../manager/libs
+LIBDIR      	= ../manager/lib
 #所引用库设置
 LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml -lparse -lutils
 
 #包含头文件路径设置
-INCLUDEDIR   	= ../reactor ../boost ../tinyxml ./io_node ./protocol ./utils \
+INCLUDEDIR   	= ../reactor ../ ../tinyxml ./io_node ./protocol ./utils \
 			      ./protocol_rfid ./protocol_raw ./channel  ./ \
 			      ../includes ../parse ../utils
 #make install INSTALL_PATH   
