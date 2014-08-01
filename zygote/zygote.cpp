@@ -56,7 +56,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 	std::string      process_name_str;
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_INIT;
-	m_app_runinfo.config_file_path_         = log_file_path;
+	m_app_runinfo.config_file_path_         = config_file_path;
 //    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
@@ -69,8 +69,8 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     muduo::Logger::setFlush(flushFunc);
 #endif
 
-	LOG_INFO << "project xml config file parse";
-	if (xml_parse(config_file_path)){
+	LOG_INFO << "parse project xml config file: " << config_file_path;
+	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
 		LOG_SYSFATAL << "project xml config file parse failed!";
 	}
     Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
@@ -101,7 +101,7 @@ pid_t zygote::fork_subproc(const char *path, char *const argv[])
 
     pid                             = fork();
     if (pid == -1) {
-        LOG_WARN << "fork() err. errno:[" << errno << "] error msg:<" << strerror(errno) << "<";
+        LOG_WARN << "fork() err. errno:[" << errno << "] error msg:<" << strerror(errno) << ">";
         exit(1);
     }
     //子进程
@@ -109,7 +109,7 @@ pid_t zygote::fork_subproc(const char *path, char *const argv[])
         int ret                             = execvp(path, argv);
         if (ret < 0) {
             LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
-                    << "] error msg:<" << strerror(errno) << "<";
+                    << "] error msg:<" << strerror(errno) << ">";
         }
         exit(0);
     }
@@ -133,6 +133,9 @@ portBASE_TYPE zygote::run()
 
 	m_app_runinfo.map_pid_.clear();
     while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
+        if (0 == process_vector_no){
+            LOG_ERROR << "project xml config file error! none process want to fork to exec";
+        }
         //依据配置文件创建进程
         for (i = 0; i < process_vector_no; i++){
             pprocess_node                   = process_conf.process_node_get(i);
@@ -147,6 +150,11 @@ portBASE_TYPE zygote::run()
         }
 
         while (1){
+            if (0 == process_vector_no){
+                LOG_WARN << "sleep 1 and do nothing!";
+                sleep(1);
+                continue;
+            }
             LOG_INFO << "zygote wait begin";
             while (((pid = wait(&status)) == -1) && (errno == EINTR)) ;
             LOG_INFO << "zygote wait end";

@@ -40,6 +40,7 @@ struct app_rfidinfo{
 
 enum {
     enum_APP_STATUS_INIT = 0,
+    enum_APP_STATUS_INIT_ERR,
     enum_APP_STATUS_SEND_READERINFO,
     enum_APP_STATUS_RUN,
     enum_APP_STATUS_EXIT,
@@ -71,6 +72,7 @@ public:
     static CApplication *GetInstance(void);
     portBASE_TYPE run(void);
     portBASE_TYPE init(const char *log_file_path, const char *config_file_path);
+    void quit(void);
 
 private:
     CApplication(const CApplication &other);
@@ -92,7 +94,6 @@ private:
     portBASE_TYPE protocol_rfid_read(void);
 
     bool timer_timeout_occured(void);
-    void exit_chk(void);
 
     int rfid_device_id_get(int index);
 

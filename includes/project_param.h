@@ -52,15 +52,15 @@
 #define    def_FILE_PATH_MAX_LEN   (30)
 
 #define    def_POWER_NODE_NO     (6)
-#define    def_PROCESS_NODE_NO     (5)
-#define    def_PROTOCOL_NODE_NO    (5)
+#define    def_PROCESS_NODE_NO     (6)
+#define    def_PROTOCOL_NODE_NO    (3)
 #define    def_IO_TCP_SERVER_NODE_NO          (5)
 #define    def_IO_TCP_CLIENT_NODE_NO          (5)
 #define    def_IO_TCP_EXT_CLIENT_NODE_NO          (10)
 #define    def_IO_COM_EXT_NODE_NO          (10)
 
 
-#define    def_DEVICE_RFID_READER_NODE_NO      (20)
+#define    def_DEVICE_RFID_READER_NODE_NO      (10)
 
 
 //心跳包间隔时间 unit:s

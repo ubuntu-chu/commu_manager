@@ -66,6 +66,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 	io_node         *pio_node;
 	int             i, j;
 	int             io_vector_no;
+	int             channel_no              = 0;
 
 	m_app_runinfo.m_status                  = enum_APP_STATUS_INIT;
 	m_app_runinfo.m_pdevice_rfid            = &s_Device_rfid;
@@ -78,7 +79,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
             boost::bind(&CApplication::package_event_handler,
             this, _1, _2, _3));
 
-    utils::signal_handler_install(SIGINT, signal_handle);
+//    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
@@ -90,9 +91,12 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     muduo::Logger::setFlush(flushFunc);
 #endif
 
-	LOG_INFO << "project xml config file parse";
-	if (xml_parse(config_file_path)){
-		LOG_SYSFATAL << "project xml config file parse failed!";
+	LOG_INFO << "parse project xml config file: " << config_file_path;
+	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
+        m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
+		LOG_ERROR << "project xml config file parse failed!";
+
+		return -1;
 	}
 //    t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
 	project_config	*pproject_config    = &t_project_datum.project_config_;
@@ -102,6 +106,9 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 //    Logger::setLogLevel(muduo::Logger::INFO);
 
     LOG_INFO  << "CApplication::init------------------------";
+
+    //统计属于本进程的通道数量
+    channel_no                          = 0;
 
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
@@ -122,21 +129,19 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
                     m_app_runinfo.m_pdevice_net->channel_set(pchannel);
                 }
+
+                channel_no++;
             }
         }
     }
-#if 0
-    //遍历容器
-    for(vecotr<boost::shared_ptr<channel> >::iterator iter = channel_vector.begin();
-//    for(boost::ptr_vector<channel>::iterator iter = channel_vector.begin();
-            iter != channel_vector.end(); ++iter){
-        if (iter->contain_protocol(def_PROTOCOL_RFID_NAME)){
 
-            device_rfid.channel_set(iter.get());
-        }
+    //若进程内通道数目为0  则代表配置文件配置出错  此进程不做任何事情
+    if (0 == channel_no){
+        m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
+		LOG_ERROR << "project xml config file error! none channel belongs to process";
 
+		return -2;
     }
-#endif
 
     //创建定时器  此定时器在多线程环境中使用  因此不能使用setitime 及 timer_create 此定时器仅用于查询1s是否到时
     m_app_runinfo.timer_fd_                 = ::timerfd_create(CLOCK_MONOTONIC,
@@ -177,6 +182,7 @@ void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
     pbuf[len++]                         = m_app_runinfo.m_reader_numbs;
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
         pbuf[len++]                     = (*preader_info)[i].m_id_;
+        pbuf[len++]                     = (*preader_info)[i].m_exist_;
         pbuf[len++]                     = (*preader_info)[i].m_power;
         pbuf[len++]                     = (*preader_info)[i].m_scntm;
     }
@@ -228,7 +234,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     content_readerinfo_make(buffer, &len);
     rt     = pdevice_net->package_send_readerinfo((char *)buffer, len);
 
-    utils::log_binary_buf("CApplication::readerrfid_init",
+    utils::log_binary_buf("CApplication::readerrfid_init pdevice_net->package_send_readerinfo:",
             reinterpret_cast<const char *>(buffer), len);
 
     if (0 == rfid_device_online_no){
@@ -242,8 +248,6 @@ portBASE_TYPE CApplication::readerrfid_init(void)
 
         return (s_try_loop-- == 0)?(0):(-2);
     }else {
-        //发送一次设备在线信息给后台   让后台更新设备状态
-        device_status_send();
     }
 #if 0
     //1s time
@@ -727,12 +731,13 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
     return 0;
 }
 
-void CApplication::exit_chk(void)
+void CApplication::quit(void)
 {
-    //判断父进程是否为1  若为1  则父进程为init进程  代表创建此进程的父进程已经退出  则自己也退出
-    if (getppid() == 1){
-        LOG_INFO << "parent process exit, send sigkill to myself";
-        raise (SIGKILL);
+    //遍历容器
+    for (boost::ptr_vector<channel>::iterator iter = m_app_runinfo.channel_vector_.begin();
+            iter != m_app_runinfo.channel_vector_.end(); ++iter){
+        //关闭通道电源
+        iter->power_off();
     }
 }
 
@@ -740,10 +745,20 @@ portBASE_TYPE CApplication::run()
 {
     CDevice_net *pdevice_net                = m_app_runinfo.m_pdevice_net;
 
-	m_app_runinfo.m_status                  = enum_APP_STATUS_SEND_READERINFO;
-
     while(m_app_runinfo.m_status != enum_APP_STATUS_EXIT){
         switch (m_app_runinfo.m_status){
+        case enum_APP_STATUS_INIT:
+
+            m_app_runinfo.m_status                  = enum_APP_STATUS_SEND_READERINFO;
+            break;
+
+        //初始化错误  进程不做任何事情 只是检查父进程是否退出
+        case enum_APP_STATUS_INIT_ERR:
+
+            LOG_ERROR << "sleep 1 and Check whether the parent process exist";
+            sleep(1);
+            break;
+
         case enum_APP_STATUS_SEND_READERINFO:
         {
             if (0 == readerrfid_init()){
@@ -760,7 +775,6 @@ portBASE_TYPE CApplication::run()
                 if (timer_timeout_occured()){
                     device_status_send();
                 }
-                sleep(1);
             }else {
 
             }
@@ -772,7 +786,8 @@ portBASE_TYPE CApplication::run()
         }
         //判断父进程是否为1  若为1  则父进程为init进程  代表创建此进程的父进程已经退出  则自己也退出
         if (getppid() == 1){
-            LOG_WARN << "parent process exit, send sigkill to myself";
+            LOG_WARN << "parent process exit, close channel power and send sigkill to myself";
+            quit();
             raise (SIGKILL);
         }
     }

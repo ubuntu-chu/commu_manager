@@ -1,5 +1,5 @@
 #include "parse.h"
-#include "datum.h"
+#include <datum.h>
 
 using std::string;
 
@@ -421,7 +421,7 @@ int config_relative_set(void)
     return 0;
 }
 
-int xml_parse(const char *path)
+int xml_parse(const char *path, project_config	*pproject_config)
 {
 #if 0
 	void	        *pshmem_addr 	    = reinterpret_cast<void *>(t_project_datum.shmem_.attach());
@@ -433,7 +433,6 @@ int xml_parse(const char *path)
 	device_config   &device_conf	    = t_project_config.device_config_get();
 #else
 //	project_config  *pproject_config    = reinterpret_cast<project_config *>(t_shmem.attach());
-	project_config	*pproject_config    = &t_project_datum.project_config_;
 	power_config 	&power_conf	        = pproject_config->power_config_get();
 	process_config 	&process_conf	    = pproject_config->process_config_get();
 	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
