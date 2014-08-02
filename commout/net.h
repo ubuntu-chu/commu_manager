@@ -31,6 +31,8 @@ enum{
     def_FUNC_CODE_RFID_R,
     def_FUNC_CODE_RFID_W,
     def_FUNC_CODE_SOUND_SET,
+    def_FUNC_CODE_CHANNEL_POWER_SET,
+    def_FUNC_CODE_CHANNEL_POWER_GET,
 };
 
 class channel;

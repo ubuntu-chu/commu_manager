@@ -16,6 +16,46 @@ public:
 	void describe_set(const char *describe){strncpy(describe_, describe, sizeof(describe_));}
 	const char *describe_get(void){return describe_;}
 
+	bool run_led_on(void)
+	{
+        led_node *pnode         = led_.led_node_get(def_LED_RUN_STRING);
+        if (NULL != pnode){
+            return pnode->led_on();
+        }
+
+        return false;
+	}
+	bool run_led_off(void)
+	{
+        led_node *pnode         = led_.led_node_get(def_LED_RUN_STRING);
+        if (NULL != pnode){
+            return pnode->led_off();
+        }
+
+        return false;
+	}
+
+	bool alarm_led_on(void)
+	{
+        led_node *pnode         = led_.led_node_get(def_LED_ALARM_STRING);
+        if (NULL != pnode){
+            return pnode->led_on();
+        }
+
+        return false;
+	}
+	bool alarm_led_off(void)
+	{
+        led_node *pnode         = led_.led_node_get(def_LED_ALARM_STRING);
+        if (NULL != pnode){
+            return pnode->led_off();
+        }
+
+        return false;
+	}
+
+	led_config &led_config_get(void){return led_;}
+
 	void power_config_set(power_config &config){power_ 	= config;}
 	power_config &power_config_get(void){return power_;}
 
@@ -43,6 +83,7 @@ public:
 private:
 	char   			            describe_[def_DESCRIBE_MAX_LEN];
 	char                       log_level_;
+	led_config 				    led_;
 	power_config 				power_;
 	process_config 				process_;
 	protocol_config 			protocol_;

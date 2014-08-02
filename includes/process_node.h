@@ -19,10 +19,23 @@ public:
 
 	void file_path_set(const char *file_path){strncpy(file_path_, file_path, sizeof(file_path_));}
 	const char *file_path_get(void){return file_path_;}
+
+	void exist_set(const char *exist){strncpy(exsit_, exist, sizeof(exsit_));}
+	const char *exist_get(void){return exsit_;}
+
+	bool is_existed(void)
+	{
+	    if (0 == strcmp(def_EXIST_TRUE_STRING, exsit_)){
+	        return true;
+	    }
+
+	    return false;
+	}
 private:
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];
 	char 			file_path_[def_FILE_PATH_MAX_LEN];
+	char 			exsit_[def_EXIST_MAX_LEN];
 };
 class process_config{
 public:

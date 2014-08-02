@@ -33,6 +33,34 @@ void signal_handle(int sign_no)
     }
 }
 
+void run_led_on(void)
+{
+    if (false == t_project_datum.project_config_.run_led_on()){
+        LOG_WARN << "run led on failed\n";
+    }
+}
+
+void run_led_off(void)
+{
+    if (false == t_project_datum.project_config_.run_led_off()){
+        LOG_WARN << "run led off failed\n";
+    }
+}
+
+void alarm_led_on(void)
+{
+    if (false == t_project_datum.project_config_.alarm_led_on()){
+        LOG_WARN << "alarm led on failed\n";
+    }
+}
+
+void alarm_led_off(void)
+{
+    if (false == t_project_datum.project_config_.alarm_led_off()){
+        LOG_WARN << "alarm led off failed\n";
+    }
+}
+
 //---------------------------------------------------------------
 
 zygote    *zygote::m_pzygote = NULL;
@@ -64,7 +92,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 
 #if 1
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 200 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 2* 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
@@ -140,6 +168,9 @@ portBASE_TYPE zygote::run()
         for (i = 0; i < process_vector_no; i++){
             pprocess_node                   = process_conf.process_node_get(i);
 
+            if (false == pprocess_node->is_existed()){
+                continue;
+            }
             child_argv[0]                   = pprocess_node->file_path_get();
             child_argv[1]                   = m_app_runinfo.config_file_path_;
             pid                             = fork_subproc(child_argv[0], (char **)child_argv);
@@ -193,8 +224,11 @@ void zygote::quit(void)
 
 int main(int argc, char**argv)
 {
-	const char *config_file_path;
-	char log_file_path[100]       = "../log/";
+	char    config_file_path[150];
+	char    log_file_path[150]    = "which ";
+	const char *pbase_name       = ::basename(argv[0]);
+	char    *ptmp;
+	FILE    *stream;
 	zygote  *pzygote;
 
 	argc 			= 2;
@@ -203,13 +237,24 @@ int main(int argc, char**argv)
 	config_file_path 	= argv[1];
 #endif
 	if (argc != 2){
-		LOG_SYSFATAL << "argc must = 2" << getpid();
+		LOG_SYSFATAL << "argc must = 2";
 	}
+	strcat(log_file_path, pbase_name);
+	stream                   = popen(log_file_path, "r" );
+	if (NULL == stream){
+		LOG_SYSFATAL << "popen failed!";
+	}
+	memset(log_file_path, '\0', sizeof(log_file_path));
+	fread(log_file_path, sizeof(char), sizeof(log_file_path),  stream);
+	pclose(stream);
 
-	strcat(log_file_path, ::basename(argv[0]));
-//	config_file_path = "/home/barnard/work/commu_manager/manager/config/config.xml";
-//	config_file_path          = argv[1];
-	config_file_path          = "../config/config.xml";
+	strcpy(config_file_path, log_file_path);
+	ptmp                      = strrchr(log_file_path, '/');
+	strcpy(ptmp, "/../log/");
+	strcat(log_file_path, pbase_name);
+
+	ptmp                      = strrchr(config_file_path, '/');
+	strcpy(ptmp, "/../config/config.xml");
 
 	pzygote                   = zygote::GetInstance();
     pzygote->init(log_file_path, config_file_path);

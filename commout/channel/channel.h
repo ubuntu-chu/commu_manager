@@ -68,7 +68,9 @@ public:
     channel():mutex_(),
         condition_(mutex_),
         status_(0),
-        frame_arrived_(0){}
+        frame_arrived_(0)
+    {
+    }
     ~channel(){}
 
     //初始化通信介质
@@ -144,6 +146,10 @@ public:
     {
         return power_ctrl('0');
     }
+    int power_get(void)
+    {
+        return power_statue_ - '0';
+    }
 
     protocol *protocol_get(void)
     {
@@ -163,6 +169,7 @@ private:
     int write(vector<char> &vec);
 	bool power_ctrl(char value)
 	{
+	    power_statue_                   = value;
 	    if (NULL == io_base_){
 	        return false;
 	    }
@@ -176,6 +183,7 @@ private:
 
     channel_runinfo         runinfo_;
     int                     duplex_type_;
+    int                     power_statue_;
 
 //    channel_worktype        work_type;
     boost::shared_ptr<io_base> io_base_;

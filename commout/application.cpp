@@ -44,6 +44,34 @@ class project_datum  t_project_datum;
 
 static CApplication     c_application;
 
+void run_led_on(void)
+{
+    if (false == t_project_datum.project_config_.run_led_on()){
+        LOG_WARN << "run led on failed\n";
+    }
+}
+
+void run_led_off(void)
+{
+    if (false == t_project_datum.project_config_.run_led_off()){
+        LOG_WARN << "run led off failed\n";
+    }
+}
+
+void alarm_led_on(void)
+{
+    if (false == t_project_datum.project_config_.alarm_led_on()){
+        LOG_WARN << "alarm led on failed\n";
+    }
+}
+
+void alarm_led_off(void)
+{
+    if (false == t_project_datum.project_config_.alarm_led_off()){
+        LOG_WARN << "alarm led off failed\n";
+    }
+}
+
 CApplication *CApplication::GetInstance(void)
 {
 
@@ -86,7 +114,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
 #if 1
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 200 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 2* 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
@@ -123,8 +151,6 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
                     m_app_runinfo.m_pdevice_rfid->channel_set(pchannel);
                 }
-                //开启此通道电源
-                pchannel->power_on();
                 if (pchannel->contain_protocol(def_PROTOCOL_MAC_NAME)){
 
                     m_app_runinfo.m_pdevice_net->channel_set(pchannel);
@@ -135,10 +161,10 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
         }
     }
 
-    //若进程内通道数目为0  则代表配置文件配置出错  此进程不做任何事情
-    if (0 == channel_no){
+    //若进程内通道数目必须为2  则代表配置文件配置出错  此进程不做任何事情
+    if (2 != channel_no){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
-		LOG_ERROR << "project xml config file error! none channel belongs to process";
+		LOG_ERROR << "project xml config file error! the channels belongs to process numb != 2";
 
 		return -2;
     }
@@ -239,12 +265,12 @@ portBASE_TYPE CApplication::readerrfid_init(void)
 
     if (0 == rfid_device_online_no){
         LOG_WARN << "err:no rfid reader find! try scan again!";
-        sleep(1);
+        CurrentThread::sleepUsec(1*1000*1000);
         return -1;
     }
     if (rt != 0){
         LOG_WARN << "no respond from remote, sleep 1 and try again; loop = [" << s_try_loop << "]";
-        sleep(1);
+        CurrentThread::sleepUsec(1*1000*1000);
 
         return (s_try_loop-- == 0)?(0):(-2);
     }else {
@@ -666,6 +692,33 @@ bool CApplication::timer_timeout_occured(void)
     return true;
 }
 
+portBASE_TYPE CApplication::readerrfid_channelpower_set(uint8 *pbuf, uint16 *plen)
+{
+    CDevice_Rfid    *pdevice_rfid           = m_app_runinfo.m_pdevice_rfid;
+	channel         *pchannel               = pdevice_rfid->channel_get();
+
+	if (pbuf[0]){
+        pchannel->power_on();
+	}else {
+        pchannel->power_off();
+	}
+	readerrfid_channelpower_get(pbuf, plen);
+
+    return RSP_OK;
+}
+
+portBASE_TYPE CApplication::readerrfid_channelpower_get(uint8 *pbuf, uint16 *plen)
+{
+    CDevice_Rfid    *pdevice_rfid           = m_app_runinfo.m_pdevice_rfid;
+	channel         *pchannel               = pdevice_rfid->channel_get();
+
+    *plen                                   = 2;
+    *pbuf++                                 = RSP_OK;
+    *pbuf++                                 = pchannel->power_get();
+
+    return RSP_OK;
+}
+
 portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8 *pbuf, uint16 len)
 {
     CDevice_net *pdevice_net                    = m_app_runinfo.m_pdevice_net;
@@ -720,6 +773,16 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
             readerrfid_sound_set(pbuf, &len);
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
             break;
+
+        case def_FUNC_CODE_CHANNEL_POWER_SET:
+            readerrfid_channelpower_set(pbuf, &len);
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
+            break;
+
+        case def_FUNC_CODE_CHANNEL_POWER_GET:
+            readerrfid_channelpower_get(pbuf, &len);
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
+            break;
  
         default:
             rsp                                  = RSP_INVALID_CMD;
@@ -755,8 +818,8 @@ portBASE_TYPE CApplication::run()
         //初始化错误  进程不做任何事情 只是检查父进程是否退出
         case enum_APP_STATUS_INIT_ERR:
 
-            LOG_ERROR << "sleep 1 and Check whether the parent process exist";
-            sleep(1);
+            LOG_ERROR << "sleep 2 and Check whether the parent process exist";
+            CurrentThread::sleepUsec(2*1000*1000);
             break;
 
         case enum_APP_STATUS_SEND_READERINFO:
@@ -798,12 +861,26 @@ portBASE_TYPE CApplication::run()
 int main(int argc, char**argv)
 {
 	CApplication  *pcapplication;
-	char log_file_path[100]       = "../log/";
+	char    log_file_path[150]    = "which ";
+	const char *pbase_name       = ::basename(argv[0]);
+	char    *ptmp;
+	FILE    *stream;
 
 	if (argc != 2){
 		LOG_SYSFATAL << "argc must = 2" << getpid();
 	}
-	strcat(log_file_path, ::basename(argv[0]));
+    strcat(log_file_path, pbase_name);
+	stream                   = popen(log_file_path, "r" );
+	if (NULL == stream){
+		LOG_SYSFATAL << "popen failed!";
+	}
+	memset(log_file_path, '\0', sizeof(log_file_path));
+	fread(log_file_path, sizeof(char), sizeof(log_file_path),  stream);
+	pclose(stream);
+
+	ptmp                      = strrchr(log_file_path, '/');
+	strcpy(ptmp, "/../log/");
+	strcat(log_file_path, pbase_name);
 
 	pcapplication                   = CApplication::GetInstance();
     pcapplication->init(log_file_path, argv[1]);

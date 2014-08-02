@@ -62,6 +62,9 @@ portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *p
 	return 0;
 }
 
+extern void run_led_on(void);
+extern void run_led_off(void);
+
 int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
 {
     int            rt;
@@ -76,7 +79,9 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     if (0 == max_wait_time){
         max_wait_time               = 1;
     }
+    run_led_on();
     rt = pchannel_->write_sync_inloop(vec, max_wait_time, ppvec_ret);
+    run_led_off();
 
     //rt > 0 代表操作超时
     if (rt > 0){

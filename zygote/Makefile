@@ -24,7 +24,7 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= DAEMON  
+PROGRAM_NAME	= zygote  
 #cross compile tools defined 
 CROSS_COMPILE ?= arm-none-linux-gnueabi-
 #CROSS_COMPILE ?=

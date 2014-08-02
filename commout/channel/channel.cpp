@@ -18,7 +18,11 @@ bool channel::init(void)
     frame_arrived_                      = false;
     write_sync_inloop_called_           = 0;
     protocol_->init();
-	return io_base_->init();
+	io_base_->init();
+	//默认开启通道电源
+	power_on();
+
+	return true;
 }
 
 //反初始化
@@ -29,6 +33,7 @@ bool channel::uninit(void)
 	}
 
     protocol_->uninit();
+    power_off();
 	return io_base_->uninit();
 }
 

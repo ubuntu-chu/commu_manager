@@ -46,21 +46,32 @@
 #define    def_DATA_LEN_STRING     ("data_len")
 
 
+#define    def_LED_STRING           ("led")
+#define    def_LED_RUN_STRING       ("run")
+#define    def_LED_ALARM_STRING     ("alarm")
+
+#define    def_EXIST_STRING         ("exist")
+#define    def_EXIST_TRUE_STRING     ("true")
+#define    def_EXIST_FALSE_STRING     ("false")
 
 #define    def_NAME_MAX_LEN        (30)
-#define    def_DESCRIBE_MAX_LEN    (70)
+#define    def_DESCRIBE_MAX_LEN    (50)
 #define    def_FILE_PATH_MAX_LEN   (30)
 
+#define    def_LONG_FILE_PATH_MAX_LEN   (70)
+#define    def_EXIST_MAX_LEN    (10)
+
+#define    def_LED_NODE_NO     (3)
 #define    def_POWER_NODE_NO     (6)
 #define    def_PROCESS_NODE_NO     (6)
 #define    def_PROTOCOL_NODE_NO    (3)
-#define    def_IO_TCP_SERVER_NODE_NO          (5)
-#define    def_IO_TCP_CLIENT_NODE_NO          (5)
-#define    def_IO_TCP_EXT_CLIENT_NODE_NO          (10)
-#define    def_IO_COM_EXT_NODE_NO          (10)
+#define    def_IO_TCP_SERVER_NODE_NO          (1)
+#define    def_IO_TCP_CLIENT_NODE_NO          (1)
+#define    def_IO_TCP_EXT_CLIENT_NODE_NO          (6)
+#define    def_IO_COM_EXT_NODE_NO          (6)
 
 
-#define    def_DEVICE_RFID_READER_NODE_NO      (10)
+#define    def_DEVICE_RFID_READER_NODE_NO      (6)
 
 
 //心跳包间隔时间 unit:s

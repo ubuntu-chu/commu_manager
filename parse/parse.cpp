@@ -433,6 +433,7 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	device_config   &device_conf	    = t_project_config.device_config_get();
 #else
 //	project_config  *pproject_config    = reinterpret_cast<project_config *>(t_shmem.attach());
+	led_config 	    &led_conf	        = pproject_config->led_config_get();
 	power_config 	&power_conf	        = pproject_config->power_config_get();
 	process_config 	&process_conf	    = pproject_config->process_config_get();
 	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
@@ -469,6 +470,39 @@ int xml_parse(const char *path, project_config	*pproject_config)
         pproject_config->log_lev_set(Logger::ERROR);
     }else if (0 == strcmp(def_LOG_LEV_FATAL , value.c_str())){
         pproject_config->log_lev_set(Logger::FATAL);
+    }
+
+	//解析led
+	strNodeName                         = def_LED_STRING;
+    xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
+    if (NULL == pNode) {
+	    return  -1;
+    }
+    strAttrName                         = def_DESCRIBE_STRING;
+    if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+	    return  -1;
+    }
+    led_conf.describe_set(value.c_str());
+    //遍历pNode下所有节点
+    for (pEle = pNode->FirstChildElement(); pEle;
+            pEle = pEle->NextSiblingElement()) {
+        //遍历此节点下所有属性 并加入到process配置中
+        TiXmlAttribute* pAttr = NULL;
+        led_node        t_led_node;
+        for (pAttr = pEle->FirstAttribute(); pAttr; pAttr = pAttr->Next()) {
+            if (0 == strcmp(def_NAME_STRING, pAttr->Name())){
+                t_led_node.name_set(pAttr->Value());
+            }else if (0 == strcmp(def_DESCRIBE_STRING , pAttr->Name())){
+                t_led_node.describe_set(pAttr->Value());
+            }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
+                t_led_node.path_set(pAttr->Value());
+            }
+        }
+        //检测power控制文件是否存在
+        t_led_node.led_exist_chk();
+        //默认power关闭
+        t_led_node.led_off();
+        led_conf.led_add(t_led_node);
     }
 
 	//解析power配置信息
@@ -528,6 +562,8 @@ int xml_parse(const char *path, project_config	*pproject_config)
                 t_process_node.describe_set(pAttr->Value());
             }else if (0 == strcmp(def_PATH_STRING , pAttr->Name())){
                 t_process_node.file_path_set(pAttr->Value());
+            }else if (0 == strcmp(def_EXIST_STRING , pAttr->Name())){
+                t_process_node.exist_set(pAttr->Value());
             }
         }
         process_conf.process_add(t_process_node);

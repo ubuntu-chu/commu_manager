@@ -3,6 +3,87 @@
 
 #include "project_param.h"
 
+class led_node{
+public:
+	led_node(){}
+	~led_node(){}
+
+	void name_set(const char *name){strncpy(name_, name, sizeof(name_));}
+	const char *name_get(void){return name_;}
+
+	void describe_set(const char *describe){strncpy(describe_, describe, sizeof(describe_));}
+	const char *describe_get(void){return describe_;}
+
+	void path_set(const char *path){strncpy(path_, path, sizeof(path_));}
+	const char *path_get(void){return path_;}
+
+	bool led_on(void){return led_ctrl('1');}
+	bool led_off(void){return led_ctrl('0');}
+	bool led_exist_chk(void)
+	{
+	    fd_ = open(path_, O_WRONLY);
+	    return (fd_ < 0)?(false):(true);
+	}
+	bool led_ctrl(char value)
+	{
+	    if (fd_ < 0){
+	        return false;
+	    }
+	    if (sizeof(value) == write(fd_, &value, sizeof(value))){
+	        return true;
+	    }else {
+	        return false;
+	    }
+	}
+private:
+
+	char   			name_[def_NAME_MAX_LEN];
+	char   			describe_[def_DESCRIBE_MAX_LEN];
+	char 			path_[def_LONG_FILE_PATH_MAX_LEN];
+	int             fd_;
+};
+
+class led_config{
+public:
+    led_config():index_(0){}
+	~led_config(){}
+
+    void describe_set(const char *describe){strncpy(describe_, describe, sizeof(describe_));}
+	const char *describe_get(void){return describe_;}
+
+    int led_add(const class led_node &node)
+    {
+        if (index_ >= def_POWER_NODE_NO){
+            return -1;
+        }
+        led_vecotr_[index_++]   = node;
+
+        return 0;
+    }
+	led_node *led_node_get(const char *name)
+	{
+	    int  i;
+	    led_node *pnode   = &led_vecotr_[0];
+
+	    for (i = 0; i < index_; i++){
+	        if (0 == strcmp(name, pnode->name_get())){
+	            break;
+	        }
+	        pnode++;
+	    }
+	    if (i == index_){
+	        return NULL;
+	    }
+
+	    return pnode;
+	}
+private:
+	char   			describe_[def_DESCRIBE_MAX_LEN];
+	unsigned char index_;
+	led_node        led_vecotr_[def_LED_NODE_NO];
+};
+
+
 //工程配置定义
 class power_node{
 public:
@@ -22,7 +103,7 @@ public:
 	bool power_off(void){return power_ctrl('0');}
 	bool power_exist_chk(void)
 	{
-	    fd_ = open(path_, O_RDWR);
+	    fd_ = open(path_, O_WRONLY);
 	    return (fd_ < 0)?(false):(true);
 	}
 	bool power_ctrl(char value)
@@ -40,7 +121,7 @@ private:
 
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];
-	char 			path_[def_FILE_PATH_MAX_LEN];
+	char 			path_[def_LONG_FILE_PATH_MAX_LEN];
 	int             fd_;
 };
 
