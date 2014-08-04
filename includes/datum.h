@@ -10,6 +10,11 @@
 using namespace muduo;
 using namespace muduo::net;
 
+struct process_stat{
+
+    char                       comm_stat;
+};
+
 class project_datum{
 public:
     project_datum(){}
@@ -22,11 +27,12 @@ public:
 
 
 //private:
-//    class shmem		    shmem_;
+    class shmem		    shmem_;
 //    project_config      *pproject_config_;
     project_config      project_config_;
     EventLoop           *pevent_loop_;
 
+    struct process_stat   *pprocess_stat_;
 };
 
 extern class project_datum  t_project_datum;

@@ -37,13 +37,29 @@ void signal_handle(int sign_no)
     }
 }
 
+struct process_stat   *g_pprocess_stat = NULL;
+
+struct process_stat   *process_stat_ptr_get(void)
+{
+    return g_pprocess_stat;
+}
+
+void process_stat_ptr_set(char index)
+{
+    //获取进程状态结构体数组指针
+    t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
+
+    g_pprocess_stat   = t_project_datum.pprocess_stat_ + index;
+
+    LOG_INFO << "process index = " << index << " g_pprocess_stat = " << reinterpret_cast<int *>(g_pprocess_stat);
+}
 //---------------------------------------------------------------
 
 CApplication    *CApplication::m_pcapplicaiton = NULL;
 class project_datum  t_project_datum;
 
 static CApplication     c_application;
-
+#if 0
 void run_led_on(void)
 {
     if (false == t_project_datum.project_config_.run_led_on()){
@@ -71,6 +87,7 @@ void alarm_led_off(void)
         LOG_WARN << "alarm led off failed\n";
     }
 }
+#endif
 
 CApplication *CApplication::GetInstance(void)
 {
@@ -167,6 +184,30 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 		LOG_ERROR << "project xml config file error! the channels belongs to process numb != 2";
 
 		return -2;
+    }
+
+	process_config  &process_conf	        = pproject_config->process_config_get();
+	process_node    *pprocess_node;
+	int             process_vector_no       = process_conf.process_vector_no_get();
+	char            process_index           = process_vector_no;
+
+    for (i = 0; i < process_vector_no; i++){
+        pprocess_node                   = process_conf.process_node_get(i);
+
+        if (0 == strcmp(process_name_str.c_str(), pprocess_node->name_get())){
+
+            process_index                   = pprocess_node->index_get();
+            //设置进程索引号
+            process_stat_ptr_set(process_index);
+            break;
+        }
+    }
+
+    if (process_index >= process_vector_no){
+        m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
+		LOG_ERROR << "project xml config file error! process index >= process numb";
+
+		return -3;
     }
 
     //创建定时器  此定时器在多线程环境中使用  因此不能使用setitime 及 timer_create 此定时器仅用于查询1s是否到时
@@ -888,7 +929,7 @@ int main(int argc, char**argv)
 
 	LOG_INFO << "program exit";
 	//删除共享内存
-//	t_project_datum.shmem_.detach();
+	t_project_datum.shmem_.detach();
 }
 
 

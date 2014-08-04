@@ -31,11 +31,15 @@ public:
 
 	    return false;
 	}
+
+	void index_set(char index){index_   = index;}
+	char index_get(void){return index_;}
 private:
 	char   			name_[def_NAME_MAX_LEN];
 	char   			describe_[def_DESCRIBE_MAX_LEN];
 	char 			file_path_[def_FILE_PATH_MAX_LEN];
 	char 			exsit_[def_EXIST_MAX_LEN];
+	char            index_;
 };
 class process_config{
 public:

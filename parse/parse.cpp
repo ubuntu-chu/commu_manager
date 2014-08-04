@@ -564,6 +564,8 @@ int xml_parse(const char *path, project_config	*pproject_config)
                 t_process_node.file_path_set(pAttr->Value());
             }else if (0 == strcmp(def_EXIST_STRING , pAttr->Name())){
                 t_process_node.exist_set(pAttr->Value());
+            }else if (0 == strcmp(def_INDEX_STRING , pAttr->Name())){
+                t_process_node.index_set(atoi(pAttr->Value()));
             }
         }
         process_conf.process_add(t_process_node);

@@ -97,11 +97,10 @@ private:
 
     bool timer_timeout_occured(void);
 
-    int rfid_device_id_get(int index);
-
-
     static CApplication     *m_pcapplicaiton;
     struct _app_runinfo_    m_app_runinfo;
 };
+
+extern struct process_stat   *process_stat_ptr_get(void);
 
 #endif

@@ -159,6 +159,10 @@ public:
     {
         return io_base_.get();
     }
+	const char *io_node_name_get(void)
+	{
+	    return io_base_->io_node_get()->name_get();
+	}
 
     //获取此通道的io_base下所挂在设备的数目
     int device_no_get(void);
@@ -175,11 +179,6 @@ private:
 	    }
         return io_base_->power_ctrl(value);
 	}
-	const char *io_node_name_get(void)
-	{
-	    return io_base_->io_node_get()->name_get();
-	}
-
 
     channel_runinfo         runinfo_;
     int                     duplex_type_;

@@ -39,7 +39,7 @@ TOPDIR       	= $(shell pwd)
 #SRCDIR	 		= $(TOPDIR)/src
 SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
-LIBDIR      	= ../manager/libs
+LIBDIR      	= ../manager/lib
 #所引用库设置
 LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml
 

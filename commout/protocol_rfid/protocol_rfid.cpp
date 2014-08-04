@@ -1,4 +1,5 @@
 #include "protocol_rfid.h"
+#include <utils.h>
 
 #define PRESET_VALUE (0xFFFF)
 #define POLYNOMIAL  (0x8408)
@@ -98,6 +99,11 @@ int  protocol_rfid::validate_aframe(struct validate_aframe_info *pinfo, int& ipa
 
 //    utils::log_binary_buf("protocol_rfid::validate_aframe", outbuffer_.peek(), outbuffer_.readableBytes());
     //对接收到的数据内容进行校验
+    if (outbuffer_.readableBytes() <= 3){
+        utils::print_err_msg("outbuffer readable bytes <= 3", __FILE__, __LINE__);
+        rt                              = -4;
+        goto quit;
+    }
     //地址校验
     outbuffer_.retrieveInt8();
     if (pdata[1] != outbuffer_.readInt8()){

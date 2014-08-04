@@ -54,6 +54,8 @@
 #define    def_EXIST_TRUE_STRING     ("true")
 #define    def_EXIST_FALSE_STRING     ("false")
 
+#define    def_INDEX_STRING         ("index")
+
 #define    def_NAME_MAX_LEN        (30)
 #define    def_DESCRIBE_MAX_LEN    (50)
 #define    def_FILE_PATH_MAX_LEN   (30)
@@ -93,6 +95,9 @@
 #define     def_LOG_LEV_ERROR           ("error")
 #define     def_LOG_LEV_FATAL           ("fatal")
 
+
+#define     def_PROCESS_COMM_OK         (1)
+#define     def_PROCESS_COMM_FAILED     (0)
 
 #endif
 

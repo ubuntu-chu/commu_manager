@@ -1,6 +1,9 @@
 #include "rfid.h"
 #include "stdio.h"
 #include "channel.h"
+#include <datum.h>
+
+extern struct process_stat   *process_stat_ptr_get(void);
 
 //command list
 enum rfid_g2_cmd {
@@ -69,6 +72,7 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
 {
     int            rt;
     int            max_wait_time;
+    struct process_stat   *pprocess_stat;
 
     if (pchannel_ == NULL){
         return -1;
@@ -79,9 +83,7 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     if (0 == max_wait_time){
         max_wait_time               = 1;
     }
-    run_led_on();
     rt = pchannel_->write_sync_inloop(vec, max_wait_time, ppvec_ret);
-    run_led_off();
 
     //rt > 0 代表操作超时
     if (rt > 0){
@@ -93,6 +95,13 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     }else {
         readerinfo_vec_[reader_id_].m_offline_cnt_  = 0;
         readerinfo_vec_[reader_id_].m_exist_        = DEV_ONLINE;
+    }
+    pprocess_stat                                   = process_stat_ptr_get();
+    //没有在线设备  通讯异常
+    if (0 == rfid_device_online_no_get()){
+        pprocess_stat->comm_stat                    = def_PROCESS_COMM_FAILED;
+    }else {
+        pprocess_stat->comm_stat                    = def_PROCESS_COMM_OK;
     }
 
     return rt;

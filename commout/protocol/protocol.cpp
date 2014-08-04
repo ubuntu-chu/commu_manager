@@ -22,6 +22,7 @@ void protocol::uninit()
 bool protocol::read_frchannel(const char *pdata, int len, int iflag)
 {
     struct validate_aframe_info     t_validate_aframe_info;
+    char   log_msg_head[100];
 
     //通道信息
     if(iflag != 0) {
@@ -29,6 +30,9 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
 
         return true;
     }
+    strcpy(log_msg_head, pchannel_->io_node_name_get());
+    strcat(log_msg_head, "-> protocol::read_frchannel");
+
     inbuffer_.append(pdata, len);
     while (inbuffer_.readableBytes()){
         int         packlen;
@@ -36,7 +40,7 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         const char  *paddr        = inbuffer_.peek();
         int         no             = inbuffer_.readableBytes();
 
-        utils::log_binary_buf("protocol::read_frchannel", paddr, no);
+        utils::log_binary_buf(log_msg_head, paddr, no);
         //使用pdata_  pdata_actual_ 原因： 整个数据中 可能在完整的一帧前 包含有些无效数据 其中pdata_
         //指向整个数据的起始地址 pdata_actual_指向完整一帧的数据起始地址 pdata_actual_和pdata_之间的
         //差值即为完整一帧之前的无效数据个数

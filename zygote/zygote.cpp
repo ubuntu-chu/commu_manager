@@ -96,6 +96,9 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
+    //获取进程状态结构体数组指针
+    t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
+    LOG_INFO << "t_project_datum.pprocess_stat_ = " << reinterpret_cast<int *>(t_project_datum.pprocess_stat_);
 
 	LOG_INFO << "parse project xml config file: " << config_file_path;
 	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
@@ -262,7 +265,7 @@ int main(int argc, char**argv)
 
 	LOG_INFO << "program exit";
 	//删除共享内存
-//	t_project_datum.shmem_.detach();
+	t_project_datum.shmem_.detach();
 }
 
 
