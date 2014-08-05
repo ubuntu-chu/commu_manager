@@ -15,7 +15,7 @@ do
 	echo ""
 
 	cd ${dir}
-	make CROSS_COMPILE=${CROSS_COMPILE_NAME}; make install INSTALL_PATH=${INSTALL_PATH_NAME};\
+	make distclean;\
 	resu=$?;
 	cd ${CUR_PWD}
 	if [ 0 -ne $resu ]; then

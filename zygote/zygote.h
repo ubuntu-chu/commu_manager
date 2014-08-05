@@ -31,6 +31,8 @@ public:
     void quit(void);
     void exit_code_analyze(pid_t pid, int status);
 
+    void channels_power_off(void);
+
     pid_t fork_subproc(const char *path, char *const argv[]);
 private:
     zygote(const zygote &other);

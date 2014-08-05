@@ -10,7 +10,7 @@
 //进程间共享内存定义
 #define 	def_FTOK_PATH 			("/etc/profile")
 #define 	def_FTOK_PROJ_ID 		(0x20)
-#define 	def_SHMEM_SIZE			(20)
+#define 	def_SHMEM_SIZE			(100)
 
 class shmem{
 public:

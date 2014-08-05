@@ -61,6 +61,11 @@ void alarm_led_off(void)
     }
 }
 
+struct process_stat   *process_stat_ptr_get(char index)
+{
+    return t_project_datum.pprocess_stat_ + index;
+}
+
 //---------------------------------------------------------------
 
 zygote    *zygote::m_pzygote = NULL;
@@ -106,6 +111,9 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 	}
     Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
 //    Logger::setLogLevel(muduo::Logger::INFO);
+
+    run_led_off();
+    alarm_led_off();
 
     return 0;
 }
@@ -159,8 +167,11 @@ portBASE_TYPE zygote::run()
 	int             i, status;
     pid_t pid;
     map<pid_t, process_node *>::iterator it;
-    const char *child_argv[100] = {0};
-
+    const char *child_argv[100]            = {0};
+    struct process_stat   *pprocess_stat   = NULL;
+    bool            comm_stat;
+    struct timespec ts                      = {1, 0};
+    int             rt;
 
 	m_app_runinfo.map_pid_.clear();
     while(m_app_runinfo.m_status == enum_APP_STATUS_RUN){
@@ -174,6 +185,10 @@ portBASE_TYPE zygote::run()
             if (false == pprocess_node->is_existed()){
                 continue;
             }
+            //初始化进程通讯状态
+            pprocess_stat                   = process_stat_ptr_get(pprocess_node->index_get());
+            pprocess_stat->comm_stat        = def_PROCESS_COMM_FAILED;
+
             child_argv[0]                   = pprocess_node->file_path_get();
             child_argv[1]                   = m_app_runinfo.config_file_path_;
             pid                             = fork_subproc(child_argv[0], (char **)child_argv);
@@ -189,6 +204,35 @@ portBASE_TYPE zygote::run()
                 sleep(1);
                 continue;
             }
+            rt                                  = ::nanosleep(&ts, NULL);
+            if ((rt == -1) && (errno == EINTR)){
+
+            }
+
+            comm_stat                           = false;
+            //统计子进程的通讯状态
+            for (i = 0; i < process_vector_no; i++){
+                pprocess_node                   = process_conf.process_node_get(i);
+
+                if (false == pprocess_node->is_existed()){
+                    continue;
+                }
+                pprocess_stat                   = process_stat_ptr_get(pprocess_node->index_get());
+                LOG_INFO << "name:[" << pprocess_node->name_get()
+                        << "] path:<" << pprocess_node->file_path_get() << "> comm_stat = "
+                        << pprocess_stat->comm_stat;
+                if (pprocess_stat->comm_stat  == def_PROCESS_COMM_OK){
+                    comm_stat                   = true;
+//                    break;
+                }
+            }
+            if (true == comm_stat){
+                run_led_on();
+            }else {
+                run_led_off();
+            }
+
+#if 0
             LOG_INFO << "zygote wait begin";
             while (((pid = wait(&status)) == -1) && (errno == EINTR)) ;
             LOG_INFO << "zygote wait end";
@@ -214,10 +258,25 @@ portBASE_TYPE zygote::run()
                 //添加新条目到map中
                 m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
             }
+#endif
         }
+
     }
 
     return 0;
+}
+
+void zygote::channels_power_off(void)
+{
+    project_config	*pproject_config        = &t_project_datum.project_config_;
+	power_config    &power_conf	            = pproject_config->power_config_get();
+	int             power_vector_no         = power_conf.power_vector_no_get();
+	int             i;
+
+    //关闭所有通道电源
+    for (i = 0; i < power_vector_no; i++){
+        power_conf.power_node_get(i)->power_off();
+    }
 }
 
 void zygote::quit(void)

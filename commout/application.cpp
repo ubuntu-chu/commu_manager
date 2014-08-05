@@ -59,39 +59,9 @@ CApplication    *CApplication::m_pcapplicaiton = NULL;
 class project_datum  t_project_datum;
 
 static CApplication     c_application;
-#if 0
-void run_led_on(void)
-{
-    if (false == t_project_datum.project_config_.run_led_on()){
-        LOG_WARN << "run led on failed\n";
-    }
-}
-
-void run_led_off(void)
-{
-    if (false == t_project_datum.project_config_.run_led_off()){
-        LOG_WARN << "run led off failed\n";
-    }
-}
-
-void alarm_led_on(void)
-{
-    if (false == t_project_datum.project_config_.alarm_led_on()){
-        LOG_WARN << "alarm led on failed\n";
-    }
-}
-
-void alarm_led_off(void)
-{
-    if (false == t_project_datum.project_config_.alarm_led_off()){
-        LOG_WARN << "alarm led off failed\n";
-    }
-}
-#endif
 
 CApplication *CApplication::GetInstance(void)
 {
-
     if (NULL == m_pcapplicaiton){
         m_pcapplicaiton         = &c_application;
     }
@@ -258,22 +228,15 @@ void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
     }
 }
 
-portBASE_TYPE CApplication::readerrfid_init(void)
+portBASE_TYPE CApplication::readerrfid_query(uint8 *pbuf, uint16 *plen)
 {
-    CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
-    static uint8   s_try_loop             = 3;
-    uint8           buffer[500];
-    portBASE_TYPE   rt;
-    uint16          len                    = 0;
     list_head_t     *pdevice_list_head;
     list_node_t     *pos;
     device_node     *pdevice_node;
     class device_rfid_reader_node   *pnode_rfid_reader;
-    int             rfid_device_online_no;
 
     //获取通道下所挂接设备数量
-
     pdevice_list_head                       = pdevice_rfid->device_list_head_get();
     m_app_runinfo.m_reader_numbs            = pdevice_rfid->device_no_get();
     pdevice_rfid->reader_no_set(m_app_runinfo.m_reader_numbs);
@@ -286,11 +249,25 @@ portBASE_TYPE CApplication::readerrfid_init(void)
         //查询设备信息
         pdevice_rfid->reader_id_set(pnode_rfid_reader->id_get());
         pdevice_rfid->max_wait_time_restore();
-        rt                  = pdevice_rfid->query_readerinfo(NULL);
-        //init reader query time, power
-        if (rt == 0){
-        }
+        pdevice_rfid->query_readerinfo(NULL);
     }
+    content_readerinfo_make(pbuf, plen);
+
+    return 0;
+}
+
+portBASE_TYPE CApplication::readerrfid_init(void)
+{
+    CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
+    CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
+    static uint8   s_try_loop             = 3;
+    uint8           buffer[500];
+    portBASE_TYPE   rt;
+    uint16          len                    = 0;
+    int             rfid_device_online_no;
+
+    readerrfid_query(buffer, &len);
+
     rfid_device_online_no               = pdevice_rfid->rfid_device_online_no_get();
     LOG_INFO << "rfid device config no [" << m_app_runinfo.m_reader_numbs
             << "]; exist no [" << rfid_device_online_no
@@ -298,7 +275,6 @@ portBASE_TYPE CApplication::readerrfid_init(void)
             << s_try_loop << "]";
     //when no reader exist, reader_numbs = 0
     //send reader info  to host
-    content_readerinfo_make(buffer, &len);
     rt     = pdevice_net->package_send_readerinfo((char *)buffer, len);
 
     utils::log_binary_buf("CApplication::readerrfid_init pdevice_net->package_send_readerinfo:",
@@ -802,6 +778,17 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
             }
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
             break;
+        case def_FUNC_CODE_READER_QUERY:
+            if (len != 1){
+                pbuf[0]                         = RSP_INVALID_PARAM_LEN;
+            }else {
+                pbuf[0]                         = RSP_OK;
+            }
+            readerrfid_query(&pbuf[1], &len);
+            len++;
+            pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
+            break;
+
         case def_FUNC_CODE_READER_SET:
             readerrfid_write(pbuf, &len);
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);

@@ -87,7 +87,7 @@ int CDevice_net::package_send_status(char *pbuf, uint16 len)
 
 int CDevice_net::package_send_readerinfo(char *pbuf, uint16 len)
 {
-    uint8   func_code           = def_FUNC_CODE_READER_QUERY;
+    uint8   func_code           = def_FUNC_CODE_READER_UPLOAD;
     int     rt;
 
     rt = package_send_sync(func_code, mac_frm_ctrl_init(NO_ACK_FRAME, UPSTREAM, ACK_REQUEST, FRAME_TYPE_DATA), pbuf, len);

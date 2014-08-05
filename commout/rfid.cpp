@@ -353,6 +353,7 @@ portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
     //先读取工作模式参数  然后再进行设置
     //read_mode:工作模式选择 应答模式
     read_mode               =  (*pvec_ret)[read_mode_offset++];
+    //固定选择低触发的主动模式  因为触发线默认电平为高电平
     vec_send.push_back(2);
     //mode_state
     //bit0  bit0=0 读写器支持18000-6c协议

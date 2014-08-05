@@ -25,7 +25,7 @@ enum{
 //function code
 enum{
     def_FUNC_CODE_HEARBEAT  = 1,
-    def_FUNC_CODE_READER_QUERY,
+    def_FUNC_CODE_READER_UPLOAD,
     def_FUNC_CODE_MODE_SET,
     def_FUNC_CODE_READER_SET,
     def_FUNC_CODE_RFID_R,
@@ -33,6 +33,7 @@ enum{
     def_FUNC_CODE_SOUND_SET,
     def_FUNC_CODE_CHANNEL_POWER_SET,
     def_FUNC_CODE_CHANNEL_POWER_GET,
+    def_FUNC_CODE_READER_QUERY,
 };
 
 class channel;

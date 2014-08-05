@@ -29,7 +29,6 @@ void ext_client::onConnection(const TcpConnectionPtr& conn)
     MutexLockGuard lock(mutex_);
     if (conn->connected()) {
         connection_             = conn;
-        connection_->send("nihao");
         connected_              = true;
     } else {
         connection_.reset();

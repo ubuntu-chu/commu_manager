@@ -81,6 +81,7 @@ private:
     void content_readerinfo_make(uint8 *pbuf, uint16 *plen);
     uint8 protocol_rfid_write(uint8 *pbuf, uint16 len);
     portBASE_TYPE readerrfid_init(void);
+    portBASE_TYPE readerrfid_query(uint8 *pbuf, uint16 *plen);
     portBASE_TYPE readerrfid_write(uint8 *pbuf, uint16 *plen);
     portBASE_TYPE readerrfid_sound_set(uint8 *pbuf, uint16 *plen);
     portBASE_TYPE readerrfid_channelpower_set(uint8 *pbuf, uint16 *plen);

@@ -12,7 +12,7 @@ using namespace muduo::net;
 
 struct process_stat{
 
-    char                       comm_stat;
+    int                         comm_stat;
 };
 
 class project_datum{

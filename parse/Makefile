@@ -41,7 +41,7 @@ SRCDIR	 		= ./
 #所引用的库目录设置 以空格分隔
 LIBDIR      	= ../manager/lib
 #所引用库设置
-LDFLAGS    		= -lreactor_net -lreactor_base -lpthread -lrt -ltinyxml
+LDFLAGS    		= -lpthread -lrt -ltinyxml
 
 #包含头文件路径设置
 INCLUDEDIR   	= ../reactor ../ ../tinyxml \

@@ -145,6 +145,14 @@ public:
 	power_node *power_vector_get(void){return power_vecotr_;}
 	int power_vector_no_get(void){return index_;}
 
+	power_node *power_node_get(int index)
+	{
+	    if (index > index_){
+	        return NULL;
+	    }
+
+	    return &power_vecotr_[index];
+	}
 	power_node *power_node_get(const char *name)
 	{
 	    int  i;
