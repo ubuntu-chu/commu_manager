@@ -26,8 +26,8 @@ BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
 PROGRAM_NAME	= zygote  
 #cross compile tools defined 
-CROSS_COMPILE ?= arm-none-linux-gnueabi-
-#CROSS_COMPILE ?=
+#CROSS_COMPILE ?= arm-none-linux-gnueabi-
+CROSS_COMPILE ?=
 
 #BUILD_TYPE 编译目标类型：执行文件  静态库  动态库
 BUILD_TYPE		= TYPE_EXEC

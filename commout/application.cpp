@@ -44,7 +44,12 @@ struct process_stat   *process_stat_ptr_get(void)
     return g_pprocess_stat;
 }
 
-void process_stat_ptr_set(char index)
+void process_stat_set(int stat)
+{
+    g_pprocess_stat->comm_stat              = stat;
+}
+
+void process_stat_ptr_set(int index)
 {
     //获取进程状态结构体数组指针
     t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
@@ -88,6 +93,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 	m_app_runinfo.m_pdevice_net             = &s_Device_net;
 	m_app_runinfo.m_ability                 = TERMINAL_ABILITY_NONE;
     m_app_runinfo.m_mode                    = MODE_INITIATIVE;
+    m_app_runinfo.ppid_                     = ::getppid();
 
     //设置网络包处理函数
     m_app_runinfo.m_pdevice_net->package_event_handler_set(
@@ -101,7 +107,8 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
 #if 1
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 2* 1000 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 1 * 1024));
+//    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1024 * 1024));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
@@ -142,8 +149,9 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
                     m_app_runinfo.m_pdevice_net->channel_set(pchannel);
                 }
-
                 channel_no++;
+                //打开通道电源
+                pchannel->power_on();
             }
         }
     }
@@ -179,6 +187,8 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
 		return -3;
     }
+    //初始化进程通讯状态  此状态是指 进程与阅读器之间状态
+    process_stat_set(def_PROCESS_COMM_FAILED);
 
     //创建定时器  此定时器在多线程环境中使用  因此不能使用setitime 及 timer_create 此定时器仅用于查询1s是否到时
     m_app_runinfo.timer_fd_                 = ::timerfd_create(CLOCK_MONOTONIC,
@@ -672,6 +682,8 @@ portBASE_TYPE CApplication::device_status_send(void)
         }
     }
 
+    //get channel power stat
+    buff[len++]                             = pdevice_rfid->channel_power_get();
     //get devices stat
     buff[len++]                             = m_app_runinfo.m_reader_numbs;
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
@@ -727,11 +739,10 @@ portBASE_TYPE CApplication::readerrfid_channelpower_set(uint8 *pbuf, uint16 *ple
 portBASE_TYPE CApplication::readerrfid_channelpower_get(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid           = m_app_runinfo.m_pdevice_rfid;
-	channel         *pchannel               = pdevice_rfid->channel_get();
 
     *plen                                   = 2;
     *pbuf++                                 = RSP_OK;
-    *pbuf++                                 = pchannel->power_get();
+    *pbuf++                                 = pdevice_rfid->channel_power_get();
 
     return RSP_OK;
 }
@@ -743,6 +754,8 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
     uint8        fliter                         = 0;
     uint8        func_code                      = pframe_ctl->app_frm_ptr.fun;
 
+    LOG_TRACE << "a net frame receievd, call CApplication::package_event_handler to handle; func_code = ["
+            << func_code << "]";
     //主动模式下
     if (m_app_runinfo.m_mode == MODE_INITIATIVE){
 //      if (pframe_ctl->mac_frm_ptr.ctl.ack_mask == 1){
@@ -779,13 +792,11 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, &rsp, sizeof(rsp));
             break;
         case def_FUNC_CODE_READER_QUERY:
-            if (len != 1){
-                pbuf[0]                         = RSP_INVALID_PARAM_LEN;
-            }else {
-                pbuf[0]                         = RSP_OK;
-            }
+            pbuf[0]                             = RSP_OK;
             readerrfid_query(&pbuf[1], &len);
             len++;
+            utils::log_binary_buf_trace("def_FUNC_CODE_READER_QUERY",
+                    reinterpret_cast<const char *>(pbuf), len);
             pdevice_net->package_send_rsp(pframe_ctl->app_frm_ptr.fun, pbuf, len);
             break;
 
@@ -834,7 +845,8 @@ void CApplication::quit(void)
 
 portBASE_TYPE CApplication::run()
 {
-    CDevice_net *pdevice_net                = m_app_runinfo.m_pdevice_net;
+    CDevice_net     *pdevice_net                    = m_app_runinfo.m_pdevice_net;
+    CDevice_Rfid    *pdevice_rfid                   = m_app_runinfo.m_pdevice_rfid;
 
     while(m_app_runinfo.m_status != enum_APP_STATUS_EXIT){
         switch (m_app_runinfo.m_status){
@@ -861,8 +873,14 @@ portBASE_TYPE CApplication::run()
         case enum_APP_STATUS_RUN:
             //主动模式下
             if (m_app_runinfo.m_mode == MODE_INITIATIVE){
-
-                protocol_rfid_read();
+                //通道电源打开时 扫描阅读器
+                if (pdevice_rfid->channel_power_get()){
+                    //此函数内部有进程调度点
+                    protocol_rfid_read();
+                }else {
+                    //延迟1s  让当前进程休眠  避免busy_loop
+                    CurrentThread::sleepUsec(1*1000*1000);
+                }
                 if (timer_timeout_occured()){
                     device_status_send();
                 }
@@ -875,8 +893,8 @@ portBASE_TYPE CApplication::run()
         default:
             break;
         }
-        //判断父进程是否为1  若为1  则父进程为init进程  代表创建此进程的父进程已经退出  则自己也退出
-        if (getppid() == 1){
+        //判断父进程是否存在
+        if (::getppid() != m_app_runinfo.ppid_){
             LOG_WARN << "parent process exit, close channel power and send sigkill to myself";
             quit();
             raise (SIGKILL);
@@ -895,7 +913,7 @@ int main(int argc, char**argv)
 	FILE    *stream;
 
 	if (argc != 2){
-		LOG_SYSFATAL << "argc must = 2" << getpid();
+		LOG_SYSFATAL << "argc must = 2" << ::getpid();
 	}
     strcat(log_file_path, pbase_name);
 	stream                   = popen(log_file_path, "r" );

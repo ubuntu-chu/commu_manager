@@ -5,7 +5,7 @@ CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
 
 INSTALL_PATH_NAME=/home/barnard/work/commu_manager/manager/lib
 
-SRC_DIR="tinyxml parse utils reactor/muduo/net reactor/muduo/net zygote commout"
+SRC_DIR="tinyxml parse utils reactor/muduo/base reactor/muduo/net zygote commout"
 CUR_PWD=`pwd`
 
 for dir in ${SRC_DIR}

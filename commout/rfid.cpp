@@ -4,6 +4,7 @@
 #include <datum.h>
 
 extern struct process_stat   *process_stat_ptr_get(void);
+extern void process_stat_set(int stat);
 
 //command list
 enum rfid_g2_cmd {
@@ -65,14 +66,11 @@ portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *p
 	return 0;
 }
 
-extern void run_led_on(void);
-extern void run_led_off(void);
-
 int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
 {
     int            rt;
     int            max_wait_time;
-    struct process_stat   *pprocess_stat;
+//    struct process_stat   *pprocess_stat;
 
     if (pchannel_ == NULL){
         return -1;
@@ -96,12 +94,12 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
         readerinfo_vec_[reader_id_].m_offline_cnt_  = 0;
         readerinfo_vec_[reader_id_].m_exist_        = DEV_ONLINE;
     }
-    pprocess_stat                                   = process_stat_ptr_get();
+//    pprocess_stat                                   = process_stat_ptr_get();
     //没有在线设备  通讯异常
     if (0 == rfid_device_online_no_get()){
-        pprocess_stat->comm_stat                    = def_PROCESS_COMM_FAILED;
+        process_stat_set(def_PROCESS_COMM_FAILED);
     }else {
-        pprocess_stat->comm_stat                    = def_PROCESS_COMM_OK;
+        process_stat_set(def_PROCESS_COMM_OK);
     }
 
     return rt;
@@ -403,5 +401,10 @@ list_head_t *CDevice_Rfid::device_list_head_get()
 int CDevice_Rfid::device_no_get(void)
 {
     return pchannel_->device_no_get();
+}
+
+int CDevice_Rfid::channel_power_get(void)
+{
+    return pchannel_->power_get();
 }
 

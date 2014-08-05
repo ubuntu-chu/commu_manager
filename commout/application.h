@@ -51,6 +51,7 @@ struct _app_runinfo_{
     CDevice_net                         *m_pdevice_net;
 
     int                                 timer_fd_;
+    pid_t                               ppid_;
 
     struct epc_info                     m_epcinfo;
     struct app_rfidinfo                 m_rfidinfo;
@@ -102,6 +103,7 @@ private:
     struct _app_runinfo_    m_app_runinfo;
 };
 
-extern struct process_stat   *process_stat_ptr_get(void);
+struct process_stat   *process_stat_ptr_get(void);
+void process_stat_set(int stat);
 
 #endif

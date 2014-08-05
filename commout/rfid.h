@@ -143,7 +143,7 @@ public:
 	portBASE_TYPE read_data(struct read_info *pinfo, uint8 *pbuf);
 	portBASE_TYPE write_data(struct write_info *pinfo, uint8 *pbuf);
 	static portBASE_TYPE epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc);
-
+	int channel_power_get(void);
 
 	portBASE_TYPE max_wait_time_restore(void)
 	{

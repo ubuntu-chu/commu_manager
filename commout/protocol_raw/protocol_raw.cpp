@@ -132,6 +132,7 @@ bool protocol_mac::process_aframe(const char * pdata, int len, int iflag)
 //返 回 值: = 0 数据仍在接受   > 0 一帧接收完成   < 0 一帧接收出错
 //备    注:
 ////////////////////////////////////////////////////////////////////////////////
+#define     def_FRAME_HEAD_FRAME_LEN_SUM            (4)
 
 int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
@@ -145,7 +146,7 @@ int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipac
 
     ipacklen                            = 0;
     //数据帧长度 不能小于4
-    if (len < 4){
+    if (len < def_FRAME_HEAD_FRAME_LEN_SUM){
         rt                              = 0;
         goto quit;
     }
@@ -171,13 +172,13 @@ int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipac
     //查看是否完整的接收到一帧数据
     frame_len                           = LD_DWORD(&pdata[2]);
     //check len
-    if (frame_len > (len - 4 - i)) {
+    if (frame_len > (len - def_FRAME_HEAD_FRAME_LEN_SUM - i)) {
         rt                              = 0;
         goto quit;
     }
 
     //下面的情况 认为帧已经接收完全 需要对帧错误情况进行判断
-    ipacklen                            = frame_len + i + 4;
+    ipacklen                            = frame_len + i + def_FRAME_HEAD_FRAME_LEN_SUM;
     //check tail
     if ((static_cast<uint8>(pdata[frame_len + 2]) != static_cast<uint8>(def_FRAME_END_delimiter & 0x00ff))
         || (static_cast<uint8>(pdata[frame_len + 3]) != static_cast<uint8>(def_FRAME_END_delimiter >> 8))) {
@@ -187,7 +188,8 @@ int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipac
 
 #if 0
     //check sum
-    chk_sum = LD_WORD(&pdata[len-4]);
+//    chk_sum = LD_WORD(&pdata[frame_len-def_FRAME_HEAD_FRAME_LEN_SUM]);
+    chk_sum = LD_WORD(&pdata[frame_len]);
     if (chk_sum != frm_ck_sum(
             reinterpret_cast<uint8_t *>(const_cast<char *>(pdata)), frame_len)) {
         rt                              = -3;

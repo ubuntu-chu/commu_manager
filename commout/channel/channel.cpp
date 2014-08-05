@@ -139,7 +139,7 @@ int channel::write(vector<char> &vec)
         return COMM_DISCONNECT;
     }
 
-    utils::log_binary_buf("channel::write", &vec[0], vec.size());
+    utils::log_binary_buf_trace("channel::write", &vec[0], vec.size());
     if (NULL != protocol_){
         return protocol_->write_tochannel(&vec[0], vec.size());
     }
@@ -157,7 +157,7 @@ int channel::on_write(const char *pdata, size_t len)
     if(pdata == NULL)
         return COMM_INVALIDPTR;
 
-    utils::log_binary_buf("channel::on_write", pdata, len);
+    utils::log_binary_buf_trace("channel::on_write", pdata, len);
     send_status_set(true);
     rt      =  io_base_->send_package(const_cast<char *>(pdata), len);
 
@@ -216,13 +216,15 @@ channel *channel::channel_create(const io_node *pio_node_const)
     EventLoop* event_loop;
 
 	pchannel                            = new channel();
-    pchannel->event_loopthread_ = boost::shared_ptr<EventLoopThread>(new EventLoopThread(NULL));
+    pchannel->event_loopthread_.reset(new EventLoopThread(NULL));
+//    pchannel->event_loopthread_ = boost::shared_ptr<EventLoopThread>(new EventLoopThread(NULL));
     event_loop                          = pchannel->event_loopthread_->startLoop();
     pchannel->event_loop_               = event_loop;
     io_node_type                        = io_node::io_type_get(pio_node->type_get());
 
-    pchannel->protocol_         = boost::shared_ptr<protocol>(
-                                        protocol::protocol_create(pio_node->protocol_get()));
+    pchannel->protocol_.reset(protocol::protocol_create(pio_node->protocol_get()));
+//    pchannel->protocol_         = boost::shared_ptr<protocol>(
+//                                        protocol::protocol_create(pio_node->protocol_get()));
     if (NULL == pchannel->protocol_){
         LOG_ERROR << "pchannel->protocol == NULL";
     }

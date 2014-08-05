@@ -141,6 +141,7 @@ pid_t zygote::fork_subproc(const char *path, char *const argv[])
     pid                             = fork();
     if (pid == -1) {
         LOG_WARN << "fork() err. errno:[" << errno << "] error msg:<" << strerror(errno) << ">";
+        utils::print_errno_msg("zygote::fork_subproc->fork");
         exit(1);
     }
     //子进程
@@ -149,6 +150,7 @@ pid_t zygote::fork_subproc(const char *path, char *const argv[])
         if (ret < 0) {
             LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
                     << "] error msg:<" << strerror(errno) << ">";
+            utils::print_errno_msg("zygote::fork_subproc->execvp");
         }
         exit(0);
     }
@@ -201,12 +203,12 @@ portBASE_TYPE zygote::run()
         while (1){
             if (0 == process_vector_no){
                 LOG_WARN << "sleep 1 and do nothing!";
-                sleep(1);
+                ::nanosleep(&ts, NULL);
                 continue;
             }
             rt                                  = ::nanosleep(&ts, NULL);
             if ((rt == -1) && (errno == EINTR)){
-
+                LOG_INFO << "a signal occured, process it";
             }
 
             comm_stat                           = false;
@@ -218,7 +220,7 @@ portBASE_TYPE zygote::run()
                     continue;
                 }
                 pprocess_stat                   = process_stat_ptr_get(pprocess_node->index_get());
-                LOG_INFO << "name:[" << pprocess_node->name_get()
+                LOG_TRACE << "name:[" << pprocess_node->name_get()
                         << "] path:<" << pprocess_node->file_path_get() << "> comm_stat = "
                         << pprocess_stat->comm_stat;
                 if (pprocess_stat->comm_stat  == def_PROCESS_COMM_OK){
@@ -228,15 +230,22 @@ portBASE_TYPE zygote::run()
             }
             if (true == comm_stat){
                 run_led_on();
+                alarm_led_off();
             }else {
                 run_led_off();
+                alarm_led_on();
             }
+//            LOG_INFO << "zygote wait begin";
 
-#if 0
-            LOG_INFO << "zygote wait begin";
-            while (((pid = wait(&status)) == -1) && (errno == EINTR)) ;
-            LOG_INFO << "zygote wait end";
-
+            pid                                 = waitpid(-1, &status, WNOHANG);
+            if (pid < 0){
+                utils::print_errno_msg("waitpid");
+                continue;
+            }else if (pid == 0){
+                continue;
+            }
+//            while (((pid = wait(&status)) == -1) && (errno == EINTR)) ;
+//            LOG_INFO << "zygote wait end";
             //分析进程退出原因
             exit_code_analyze(pid, status);
             if (-1 == pid){
@@ -250,15 +259,17 @@ portBASE_TYPE zygote::run()
                 continue;
             }else {
                 pprocess_node                       = it->second;
-                pid                                 = fork_subproc(child_argv[0], (char **)child_argv);
                 LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
                         << "] path:<" << pprocess_node->file_path_get() << ">";
+#if 0
+                child_argv[0]                       = pprocess_node->file_path_get();
+                pid                                 = fork_subproc(child_argv[0], (char **)child_argv);
                 //将此条目删除  已经无用
                 m_app_runinfo.map_pid_.erase(it);
                 //添加新条目到map中
                 m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
-            }
 #endif
+            }
         }
 
     }
