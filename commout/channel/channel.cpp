@@ -46,8 +46,9 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 
     //对于错误帧  直接对其进行丢弃
     if (0 != iflag){
-        LOG_WARN << io_node_name_get() << "channel::on_process_aframe: a error frame receive and drop";
-        return false;
+        LOG_WARN << io_node_name_get()
+                << "channel::on_process_aframe: a error frame receive; iflag = [" << iflag <<"]";
+//        return false;
     }
 
     MutexLockGuard lock(mutex_);
