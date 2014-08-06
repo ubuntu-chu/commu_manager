@@ -21,18 +21,22 @@ public:
 	{
 	}
 
-	void create(void)
+	int create(void)
 	{
 		key_t 			key;
 
 		if ((key = ftok(def_FTOK_PATH, def_FTOK_PROJ_ID)) == (key_t)(-1)){
 			LOG_SYSFATAL << "shmem create failed!" << getpid();
+			return -1;
 		}
 		if ((id_ = shmget(key, def_SHMEM_SIZE, 0666|IPC_CREAT)) == (int)(-1)){
 			LOG_SYSFATAL << "Failed to obtain shared memory ID";
+			return -2;
 		}
         LOG_INFO << "shmget succ, key = " << muduo::Fmt("0x%x", key)
                 << " shmid = " << id_ << " size = " << def_SHMEM_SIZE;
+
+        return 0;
 	}
 
 	void destroy(void)

@@ -44,13 +44,6 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 {
     int i;
 
-    //对于错误帧  直接对其进行丢弃
-    if (0 != iflag){
-        LOG_WARN << io_node_name_get()
-                << "channel::on_process_aframe: a error frame receive; iflag = [" << iflag <<"]";
-//        return false;
-    }
-
     MutexLockGuard lock(mutex_);
     if (0 == iflag){
         //新的一帧已经到来   将之前尚未处理的帧清除
@@ -58,6 +51,9 @@ bool channel::on_process_aframe(const char * pdata, int len, int iflag)
         for (i = 0; i < len; i++){
             vec_ret_.push_back(pdata[i]);
         }
+    }else {
+        LOG_WARN << io_node_name_get()
+                << "channel::on_process_aframe: a error frame receive; iflag = [" << iflag <<"]";
     }
     frame_arrived_                      = true;
     frame_flag_                         = iflag;

@@ -9,7 +9,7 @@
 #include <datum.h>
 #include <parse.h>
 
-#define     def_DBG_IN_PC_SINGLE        (0)
+#define     def_DBG_IN_PC_SINGLE        (1)
 
 using std::string;
 
@@ -106,16 +106,16 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
 
-#if (def_DBG_IN_PC_SINGLE == 0)
     //设置日志文件名称
-//    g_logFile.reset(new muduo::LogFile(log_file_path, 1 * 1024));
     g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1024 * 1024));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
-#endif
 
     //创建进程间共享内存
-    t_project_datum.shmem_.create();
+    if (t_project_datum.shmem_.create()){
+        m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
+		return -1;
+    }
 	LOG_INFO << "parse project xml config file: " << config_file_path;
 	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
@@ -904,7 +904,7 @@ portBASE_TYPE CApplication::run()
         if ((parent_pid == 1) || (parent_pid != m_app_runinfo.ppid_)){
             LOG_WARN << "parent process exit, close channel power and send sigkill to myself";
             quit();
-            raise (SIGKILL);
+            ::raise (SIGKILL);
         }
     }
 
@@ -921,6 +921,8 @@ int main(int argc, char**argv)
 
 #if (def_DBG_IN_PC_SINGLE > 0)
 	argv[1]                       = (char *)"/home/barnard/work/commu_manager/manager/config/config.xml";
+	strcpy(log_file_path, "/home/barnard/work/commu_manager/manager/log/");
+	strcat(log_file_path, pbase_name);
 #else
 	if (argc != 2){
 		LOG_SYSFATAL << "argc must = 2" << ::getpid();

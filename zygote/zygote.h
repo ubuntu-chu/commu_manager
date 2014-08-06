@@ -5,6 +5,8 @@
 
 enum {
     enum_APP_STATUS_INIT = 0,
+    enum_APP_STATUS_INIT_ERR,
+    enum_APP_STATUS_RUN_NO_SUBPROC,
     enum_APP_STATUS_RUN,
     enum_APP_STATUS_EXIT,
 };
@@ -17,8 +19,11 @@ struct _app_runinfo_{
     const char *                       config_file_path_;
 
 
+
 };
 typedef struct _app_runinfo_ app_runinfo_t;
+
+class process_node;
 
 class zygote{
 public:
@@ -32,8 +37,13 @@ public:
     void exit_code_analyze(pid_t pid, int status);
 
     void channels_power_off(void);
+    void comm_status_statistics(void);
+    void sig_chld_handle(void);
 
-    pid_t fork_subproc(const char *path, char *const argv[]);
+    int  fork_subproc_from_config(void);
+
+    pid_t fork_subproc(process_node *pprocess_node);
+    pid_t _fork_subproc(const char *path, char *const argv[]);
 private:
     zygote(const zygote &other);
     zygote &operator =(const zygote &other);
