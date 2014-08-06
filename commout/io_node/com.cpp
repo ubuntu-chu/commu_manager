@@ -333,7 +333,9 @@ void com::handle_read(Timestamp receiveTime)
             break;
         }
     }
-    io_base::on_read(buf, len, 0);
+    if (len > 0){
+        io_base::on_read(buf, len, 0);
+    }
 }
 
 

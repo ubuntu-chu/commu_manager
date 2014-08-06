@@ -16,6 +16,13 @@ class shmem{
 public:
 	shmem()
 	{
+	}
+	~shmem()
+	{
+	}
+
+	void create(void)
+	{
 		key_t 			key;
 
 		if ((key = ftok(def_FTOK_PATH, def_FTOK_PROJ_ID)) == (key_t)(-1)){
@@ -24,10 +31,11 @@ public:
 		if ((id_ = shmget(key, def_SHMEM_SIZE, 0666|IPC_CREAT)) == (int)(-1)){
 			LOG_SYSFATAL << "Failed to obtain shared memory ID";
 		}
-        LOG_INFO << "shmget succ, key = " << muduo::Fmt("0x%x", key) 
+        LOG_INFO << "shmget succ, key = " << muduo::Fmt("0x%x", key)
                 << " shmid = " << id_ << " size = " << def_SHMEM_SIZE;
 	}
-	~shmem()
+
+	void destroy(void)
 	{
         LOG_INFO << "rm shm id = " <<id_;
 		if (id_ != (int)(-1)){

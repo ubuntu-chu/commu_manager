@@ -24,6 +24,7 @@ uint16_t frm_ck_sum(uint8_t * ptr, uint16_t len) {
 //初始化规约
 bool protocol_mac::init()
 {
+    protocol::init();
     seq_id                          = 0;
     return true;
 }

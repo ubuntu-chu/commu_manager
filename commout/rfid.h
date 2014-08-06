@@ -190,16 +190,18 @@ public:
 	void channel_set(channel *pchannel){pchannel_    = pchannel;}
 	channel *channel_get(void){return pchannel_;}
 
-	void log_print(const char *func, int rt, vector<char> *pvec_ret);
 private:
     CDevice_Rfid(const CDevice_Rfid &other);
     CDevice_Rfid &operator =(const CDevice_Rfid &other);
 
     int channel_write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret);
+    void log_critical_print(const char *func, const char *msg);
+	void log_print(const char *func, int rt, vector<char> *pvec_ret);
 
 
 	struct rfid_rsp_info		m_rsp_info;
 	int                         max_wait_time_;
+	int                         recv_data_len_;
 	uint8                       reader_id_;
 	uint8                       offset_;
 	uint8                       status_;

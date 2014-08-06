@@ -24,7 +24,7 @@
 # BUILD_DEBUG can be set to YES to include debugging info, or NO otherwise
 BUILD_DEBUG          := YES
 #应用程序、静态库、动态库名字
-PROGRAM_NAME	= commout  
+PROGRAM_NAME	= rfid_channel  
 #cross compile tools defined 
 #CROSS_COMPILE ?= arm-none-linux-gnueabi-
 CROSS_COMPILE ?=
@@ -330,7 +330,7 @@ install:
 	$(shell if ! [ -d $(INSTALL_PATH) ] ; then \
 			mkdir -p $(INSTALL_PATH) ; fi)
 #	cp $(PROGRAMDIR)/* $(INSTALL_PATH)
-	$(foreach n, $(prog_suffix), $(shell cp $(PROGRAMDIR)/$(PROGRAM) $(INSTALL_PATH)/rfid_manager_$(n)))
+	$(foreach n, $(prog_suffix), $(shell cp $(PROGRAMDIR)/$(PROGRAM) $(INSTALL_PATH)/$(PROGRAM)_$(n)))
 
 # Show help.
 help:

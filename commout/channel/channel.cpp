@@ -38,9 +38,17 @@ bool channel::uninit(void)
 }
 
 //目前的实现方案中 接收的帧最多只有一条 没有缓存机制 若要有缓存机制 则需要重新定义函数的返回值及镇的存储方式
+//iflag == 0  接收到完整的一帧
+//iflag < 0   接收到错误帧
 bool channel::on_process_aframe(const char * pdata, int len, int iflag)
 {
     int i;
+
+    //对于错误帧  直接对其进行丢弃
+    if (0 != iflag){
+        LOG_WARN << io_node_name_get() << "channel::on_process_aframe: a error frame receive and drop";
+        return false;
+    }
 
     MutexLockGuard lock(mutex_);
     if (0 == iflag){

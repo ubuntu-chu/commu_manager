@@ -9,6 +9,7 @@
 #include <datum.h>
 #include <parse.h>
 
+#define     def_DBG_IN_PC_SINGLE        (0)
 
 using std::string;
 
@@ -105,14 +106,16 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
 
-#if 1
+#if (def_DBG_IN_PC_SINGLE == 0)
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 1 * 1024));
-//    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1024 * 1024));
+//    g_logFile.reset(new muduo::LogFile(log_file_path, 1 * 1024));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1024 * 1024));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
 
+    //创建进程间共享内存
+    t_project_datum.shmem_.create();
 	LOG_INFO << "parse project xml config file: " << config_file_path;
 	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
@@ -682,6 +685,8 @@ portBASE_TYPE CApplication::device_status_send(void)
         }
     }
 
+    //get mode stat
+    buff[len++]                             = m_app_runinfo.m_mode;
     //get channel power stat
     buff[len++]                             = pdevice_rfid->channel_power_get();
     //get devices stat
@@ -847,6 +852,7 @@ portBASE_TYPE CApplication::run()
 {
     CDevice_net     *pdevice_net                    = m_app_runinfo.m_pdevice_net;
     CDevice_Rfid    *pdevice_rfid                   = m_app_runinfo.m_pdevice_rfid;
+    pid_t           parent_pid;
 
     while(m_app_runinfo.m_status != enum_APP_STATUS_EXIT){
         switch (m_app_runinfo.m_status){
@@ -881,11 +887,11 @@ portBASE_TYPE CApplication::run()
                     //延迟1s  让当前进程休眠  避免busy_loop
                     CurrentThread::sleepUsec(1*1000*1000);
                 }
-                if (timer_timeout_occured()){
-                    device_status_send();
-                }
             }else {
 
+            }
+            if (timer_timeout_occured()){
+                device_status_send();
             }
             pdevice_net->package_event_fetch();
             break;
@@ -894,7 +900,8 @@ portBASE_TYPE CApplication::run()
             break;
         }
         //判断父进程是否存在
-        if (::getppid() != m_app_runinfo.ppid_){
+        parent_pid                          = ::getppid();
+        if ((parent_pid == 1) || (parent_pid != m_app_runinfo.ppid_)){
             LOG_WARN << "parent process exit, close channel power and send sigkill to myself";
             quit();
             raise (SIGKILL);
@@ -912,6 +919,9 @@ int main(int argc, char**argv)
 	char    *ptmp;
 	FILE    *stream;
 
+#if (def_DBG_IN_PC_SINGLE > 0)
+	argv[1]                       = (char *)"/home/barnard/work/commu_manager/manager/config/config.xml";
+#else
 	if (argc != 2){
 		LOG_SYSFATAL << "argc must = 2" << ::getpid();
 	}
@@ -927,6 +937,7 @@ int main(int argc, char**argv)
 	ptmp                      = strrchr(log_file_path, '/');
 	strcpy(ptmp, "/../log/");
 	strcat(log_file_path, pbase_name);
+#endif
 
 	pcapplication                   = CApplication::GetInstance();
     pcapplication->init(log_file_path, argv[1]);
@@ -935,6 +946,7 @@ int main(int argc, char**argv)
 	LOG_INFO << "program exit";
 	//删除共享内存
 	t_project_datum.shmem_.detach();
+    t_project_datum.shmem_.destroy();
 }
 
 

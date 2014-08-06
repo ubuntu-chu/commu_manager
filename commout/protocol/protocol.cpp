@@ -8,6 +8,8 @@
 //初始化规约
 bool protocol::init()
 {
+    inbuffer_.retrieveAll();
+    outbuffer_.retrieveAll();
 
     return true;
 }

@@ -92,7 +92,7 @@ bool io_base::power_ctrl(char value)
             reinterpret_cast<io_com_ext_node *>(const_cast<io_node *>(pio_node_));
     rt                  = pio_com_ext_node->power_ctrl(value);
     if (false == rt){
-        const char *msg[]     = {" power_on", " power_off"};
+        const char *msg[]     = {" power_off", " power_on"};
 
         LOG_WARN << pio_node_->name_get() << " io_base::" << __func__ << msg[value - '0'] << " failed!";
     }

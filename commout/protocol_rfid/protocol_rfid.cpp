@@ -30,6 +30,7 @@ static unsigned int uiCrc16Cal(unsigned char const  * pucY, unsigned char ucX)
 //初始化规约
 bool protocol_rfid::init()
 {
+    protocol::init();
 
     return true;
 }
@@ -98,7 +99,6 @@ int  protocol_rfid::validate_aframe(struct validate_aframe_info *pinfo, int& ipa
         goto quit;
     }
 
-//    utils::log_binary_buf("protocol_rfid::validate_aframe", outbuffer_.peek(), outbuffer_.readableBytes());
     //对接收到的数据内容进行校验
     if (outbuffer_.readableBytes() <= 3){
         char   log_msg_head[100];
@@ -106,6 +106,7 @@ int  protocol_rfid::validate_aframe(struct validate_aframe_info *pinfo, int& ipa
         strcpy(log_msg_head, pchannel_->io_node_name_get());
         strcat(log_msg_head, "-> outbuffer readable bytes <= 3");
         utils::print_err_msg(log_msg_head, __FILE__, __LINE__);
+        utils::log_binary_buf(log_msg_head, pdata, len);
         rt                              = -4;
         goto quit;
     }

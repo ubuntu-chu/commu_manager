@@ -6,6 +6,10 @@
 extern struct process_stat   *process_stat_ptr_get(void);
 extern void process_stat_set(int stat);
 
+//6即len addr recmd status lsb-crc16 msb-crc16
+#define     def_RFID_FIX_RESPONSE_LEN       (6)
+#define     RECV_DATA_LEN_GET(tot_size)     ((tot_size) - def_RFID_FIX_RESPONSE_LEN)
+
 //command list
 enum rfid_g2_cmd {
 	QUERY_RFID				= 0x01,
@@ -41,14 +45,17 @@ enum rfid_reader_cmd{
 portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc)
 {
 	uint8		*pbuf;
+	uint8		*pbuf_start;
 	uint8		enumb;
 	uint8		eindex			= 0;
 
 	if (numb > pinfo->m_numb){
 		return -1;
 	}
-	pbuf		= pinfo->m_epcarray;
+	pbuf		                = pinfo->m_epcarray;
+	pbuf_start                  = pbuf;
 	while (eindex <= numb){
+	    //pbuf[0] 存放的是标签epc/tid长度 以一个字节表示
 		enumb					= pbuf[0];
 		if (eindex == numb){
 			break;
@@ -56,6 +63,10 @@ portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *p
 		pbuf					= pbuf + enumb + 1;
 		eindex++;
 	};
+	//对数据范围合法性进行判断
+	if ((eindex > numb) || ((pbuf + 1 + enumb - pbuf_start) > (pinfo->m_len - 1))){
+	    return -1;
+	}
 	if (NULL != penumb){
 		*penumb					= enumb >> 1;
 	}
@@ -93,6 +104,7 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     }else {
         readerinfo_vec_[reader_id_].m_offline_cnt_  = 0;
         readerinfo_vec_[reader_id_].m_exist_        = DEV_ONLINE;
+        recv_data_len_                              = RECV_DATA_LEN_GET((**ppvec_ret).size());
     }
 //    pprocess_stat                                   = process_stat_ptr_get();
     //没有在线设备  通讯异常
@@ -114,6 +126,14 @@ void CDevice_Rfid::log_print(const char *func, int rt, vector<char> *pvec_ret)
     }
 }
 
+void CDevice_Rfid::log_critical_print(const char *func, const char *msg)
+{
+    if (NULL != msg){
+        LOG_WARN << "Err: " << func << "<" << msg << "> critical failed!  return vector has no enougn data";
+    }else {
+        LOG_WARN << "Err: " << func << " critical failed!  return vector has no enougn data";
+    }
+}
 
 portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
 {
@@ -128,15 +148,18 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
         log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
 	if (NULL != pinfo){
-		memcpy((void *)pinfo, (void *)(&(*pvec_ret)[offset_]),
-		        (*pvec_ret).size());
-		pinfo->m_len		= (*pvec_ret).size();
+		memcpy((void *)pinfo, (void *)(&(*pvec_ret)[offset_]), recv_data_len_);
+		pinfo->m_len		        = recv_data_len_;
 	}
 	
 	return 0;
@@ -167,15 +190,18 @@ portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
     }
 
 	if (NULL != pbuf){
-		//-6即减去len addr recmd status lsb-crc16 msb-crc16
 		memcpy((void *)pbuf, (void *)(&(*pvec_ret)[offset_]),
-		        (*pvec_ret).size()-6);
+		        recv_data_len_);
 	}
 
 	return 0;
@@ -216,6 +242,10 @@ portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -239,6 +269,10 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
 
     readerinfo_vec_[reader_id_].m_id_             = reader_id_;
     readerinfo_vec_[reader_id_].m_power           = 0;
+    if ((0 == rt) && (recv_data_len_ < 8)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -290,6 +324,10 @@ portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -316,6 +354,10 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -340,6 +382,10 @@ portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -376,6 +422,10 @@ portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;
@@ -385,6 +435,10 @@ portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
     //调用通道写函数
     rt = channel_write_sync_inloop(vec_send, max_wait_time_, &pvec_ret);
 
+    if ((0 == rt) && (recv_data_len_ < 0)){
+        log_critical_print(__func__, NULL);
+        return -1;
+    }
     if ((0 != rt) || ((*pvec_ret)[status_] != 0)){
         log_print(__func__, rt, pvec_ret);
         return -1;

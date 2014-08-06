@@ -97,11 +97,12 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 
 #if 1
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 2* 1000 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 #endif
     //获取进程状态结构体数组指针
+    t_project_datum.shmem_.create();
     t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
     LOG_INFO << "t_project_datum.pprocess_stat_ = " << reinterpret_cast<int *>(t_project_datum.pprocess_stat_);
 
@@ -336,6 +337,7 @@ int main(int argc, char**argv)
 	LOG_INFO << "program exit";
 	//删除共享内存
 	t_project_datum.shmem_.detach();
+    t_project_datum.shmem_.destroy();
 }
 
 
