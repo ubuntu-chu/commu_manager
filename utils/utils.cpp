@@ -56,15 +56,22 @@ void print_errno_msg(const char *pmsg)
         fprintf(stdout, "errno[%d]:errmsg<%s>\n", errno_cpy,
                 strerror_r(errno_cpy, buf, sizeof(buf)-1));
     }
+    errno                               = errno_cpy;
 }
 
-void signal_handler_install(int signum, void (*handler)(int))
+int signal_handler_install(int signum, void (*handler)(int,siginfo_t*,void*))
 {
     struct sigaction act;
+    int             rt;
 
-    sigemptyset (&act.sa_mask);
-    act.sa_handler                  = handler;
-    sigaction (signum, &act, NULL);
+    sigemptyset(&act.sa_mask);
+    act.sa_sigaction                = handler;
+    act.sa_flags                    = SA_SIGINFO;
+    if ((rt = sigaction(signum, &act, NULL)) < 0){
+        print_errno_msg("sigaction");
+    }
+
+    return rt;
 }
 
 

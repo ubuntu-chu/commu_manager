@@ -1,7 +1,7 @@
 #!/bin/sh
 
-#CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
-CROSS_COMPILE_NAME= 
+CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
+#CROSS_COMPILE_NAME= 
 
 INSTALL_PATH_LIB_NAME=/home/barnard/work/commu_manager/manager/lib
 INSTALL_PATH_BIN_NAME=/home/barnard/work/commu_manager/manager/bin

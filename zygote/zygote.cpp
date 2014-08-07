@@ -4,7 +4,11 @@
 #include <utils.h>
 #include <sys/wait.h>
 
-#define     def_DBG_IN_PC_SINGLE        (1)
+#define     def_DBG_IN_PC_SINGLE        (0)
+
+#if (def_DBG_IN_PC_SINGLE > 0)
+#define     PROCESS_PREFIX_PATH         "/home/barnard/work/commu_manager/manager/"
+#endif
 
 using std::string;
 using std::pair;
@@ -64,15 +68,91 @@ struct process_stat   *process_stat_ptr_get(char index)
     return t_project_datum.pprocess_stat_ + index;
 }
 
-void sig_handler(int signum)
+void sig_handler_quit(int signum, siginfo_t *info, void *ptr)
 {
 	g_sig_quit_                             = 1;
 	g_sig_                                  = signum;
 }
 
-void sig_handler_chld(int signum)
+void sig_handler_chld(int signum, siginfo_t *info, void *ptr)
 {
 	g_sig_chld_                             = 1;
+}
+
+void sig_handler_segv(int signum, siginfo_t *info, void *ptr)
+{
+    /* 动态链接库的映射地址是动态的，需要将maps文件打印出来 */
+    char file[64], buffer[1032];
+    pid_t pid                                   = getpid();
+
+    printf("signal[%d] catched\n", signum);
+    LOG_ERROR << "signal[" << signum << "] catched";
+
+    printf("\n-------------------------- process pid  --------------------------\n");
+
+    printf("\n process pid = [%d]\n", pid);
+    LOG_ERROR << "process pid = [" << pid << "]";
+
+    printf("\n-------------------------- process MAPS --------------------------\n");
+    LOG_ERROR << "-------------------------- process MAPS --------------------------";
+
+    snprintf(file, sizeof(file), "/proc/%d/maps", pid);
+    FILE *fp                                    = fopen(file, "r");
+    if (NULL != fp){
+        while(fgets(buffer, 1024, fp)){
+            fputs(buffer, stdout);
+            buffer[strlen(buffer) - 1]          = '\0';
+            LOG_ERROR << buffer;
+        }
+    }else{
+        printf("read pid MAPS failed!\n");
+        LOG_ERROR << "read pid MAPS failed!";
+    }
+
+    printf("\n----------------------- process called frame -----------------------\n");
+    LOG_ERROR << "----------------------- process called frame -----------------------";
+
+    static int iTime = 0;
+    if (iTime++ >= 1){ /* 容错处理：如果访问 ucontext_t 结构体时产生错误会进入该分支 */
+        printf("%s reenter is not allowed!\n", __FUNCTION__);
+        LOG_ERROR << __FUNCTION__ << "reenter is not allowed!";
+        abort();
+    }
+
+    void * array[25];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    size                                        = backtrace (array, sizeof(array)/sizeof(void *));
+    strings                                     = backtrace_symbols (array, size);
+
+    printf ("backtrace ( %zd frame deep):\n", size);
+    LOG_ERROR << "backtrace (" << size << ") frame deep:";
+
+    for (i = 0; i < size; i++){
+        printf ("%d: %s\n", i, strings[i]);
+        LOG_ERROR << i << ": " << strings[i];
+    }
+    free (strings);
+
+#if 0
+    if (NULL != ptr){
+        ucontext_t* ptrUC = (ucontext_t*)ptr;
+        int *pgregs                           = (int*)(&(ptrUC->uc_mcontext.gregs));
+        int eip = pgregs[REG_EIP];
+        if (eip != array[i]){ /* 有些处理器会将出错时的 EIP 也入栈 */
+            printf("signal[%d] catched when running code at %x\n", signum, (char*)array[i] - 1);
+        }
+        printf("signal[%d] catched when running code at %x\n", signum, eip); /* 出错地址 */
+    }else{
+        printf("signal[%d] catched when running code at unknown address\n", signum);
+    }
+#endif
+
+    printf("-------------------------------------------------------------------------\n");
+
+    abort();
 }
 
 //---------------------------------------------------------------
@@ -107,16 +187,21 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     process_name_str                        = ProcessInfo::procname();
 
     //安装信号处理函数
-    utils::signal_handler_install(SIGTERM, sig_handler);
-    utils::signal_handler_install(SIGQUIT, sig_handler);
-    utils::signal_handler_install(SIGINT, sig_handler);
-    utils::signal_handler_install(SIGCHLD, sig_handler_chld);
-#if 1
+    if ((utils::signal_handler_install(SIGTERM, sig_handler_quit))
+            || (utils::signal_handler_install(SIGQUIT, sig_handler_quit))
+            || (utils::signal_handler_install(SIGINT, sig_handler_quit))
+            || (utils::signal_handler_install(SIGABRT, sig_handler_quit))
+            || (utils::signal_handler_install(SIGCHLD, sig_handler_chld))
+            || (utils::signal_handler_install(SIGSEGV, sig_handler_segv))){
+        m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
+		LOG_ERROR << "sig handler install failed!";
+
+		return -1;
+	}
     //设置日志文件名称
     g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
-#endif
     //获取进程状态结构体数组指针
     if (t_project_datum.shmem_.create()){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
@@ -168,13 +253,22 @@ pid_t zygote::_fork_subproc(const char *path, char *const argv[])
     }
     //子进程
     if (pid == 0) {
-        int ret                             = execvp(path, argv);
-        if (ret < 0) {
-            LOG_ERROR << "execu ret:[" << ret << "] errno:["<< errno
+        int  rt;
+#if (def_DBG_IN_PC_SINGLE > 0)
+        char process_path[100]              = PROCESS_PREFIX_PATH;
+
+        strcat(process_path, "bin/");
+        strcat(process_path, path);
+        rt                                  = execv(process_path, argv);
+#else
+        rt                                  = execvp(path, argv);
+#endif
+        if (rt < 0) {
+            LOG_ERROR << "execv rt:[" << rt << "] errno:["<< errno
                     << "] error msg:<" << strerror(errno) << ">";
             utils::print_errno_msg("zygote::_fork_subproc->execvp");
         }
-        exit(0);
+        exit(1);
     }
 
     return pid;
@@ -221,7 +315,6 @@ void zygote::comm_status_statistics(void)
 //                    break;
         }
     }
-#if 0
     if (true == comm_stat){
         run_led_on();
         alarm_led_off();
@@ -229,7 +322,6 @@ void zygote::comm_status_statistics(void)
         run_led_off();
         alarm_led_on();
     }
-#endif
 }
 
 void zygote::sig_chld_handle(void)
@@ -333,16 +425,16 @@ portBASE_TYPE zygote::run()
             }
             //统计子进程的通讯状态
             comm_status_statistics();
-            //处理信号
+            //处理子进程退出事件
             if (1 == g_sig_chld_){
                 g_sig_chld_                     = 0;
-                LOG_INFO << "SIG_CHLD deliver, call sig_chld_handle() to process it";
-//                sig_chld_handle();
+                LOG_INFO << "SIGCHLD deliver, call sig_chld_handle() to process it";
+                sig_chld_handle();
             }
             if (1 == g_sig_quit_){
                 g_sig_quit_                     = 0;
                 LOG_INFO << "SIG[" << g_sig_ << "] deliver, call quit() to process it";
-//                quit();
+                quit();
             }
         }
             break;
@@ -393,8 +485,10 @@ int main(int argc, char**argv)
 	zygote  *pzygote;
 
 #if (def_DBG_IN_PC_SINGLE > 0)
-	argv[1]                       = (char *)"/home/barnard/work/commu_manager/manager/config/config.xml";
-	strcpy(log_file_path, "/home/barnard/work/commu_manager/manager/log/");
+	strcpy(config_file_path, PROCESS_PREFIX_PATH);
+	strcat(config_file_path, "config/config.xml");
+	strcpy(log_file_path, PROCESS_PREFIX_PATH);
+	strcat(log_file_path, "log/");
 	strcat(log_file_path, pbase_name);
 #else
 	strcat(log_file_path, pbase_name);

@@ -9,7 +9,11 @@
 #include <datum.h>
 #include <parse.h>
 
-#define     def_DBG_IN_PC_SINGLE        (1)
+#define     def_DBG_IN_PC_SINGLE        (0)
+
+#if (def_DBG_IN_PC_SINGLE > 0)
+#define     PROCESS_PREFIX_PATH         "/home/barnard/work/commu_manager/manager/"
+#endif
 
 using std::string;
 
@@ -921,7 +925,8 @@ int main(int argc, char**argv)
 
 #if (def_DBG_IN_PC_SINGLE > 0)
 	argv[1]                       = (char *)"/home/barnard/work/commu_manager/manager/config/config.xml";
-	strcpy(log_file_path, "/home/barnard/work/commu_manager/manager/log/");
+	strcpy(log_file_path, PROCESS_PREFIX_PATH);
+	strcat(log_file_path, "log/");
 	strcat(log_file_path, pbase_name);
 #else
 	if (argc != 2){
