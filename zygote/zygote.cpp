@@ -278,10 +278,13 @@ pid_t zygote::fork_subproc(process_node *pprocess_node)
 {
     const char *child_argv[5]          = {0};
     struct process_stat   *pprocess_stat   = NULL;
+    int         index                   = pprocess_node->index_get();
 
     //初始化进程通讯状态
-    pprocess_stat                       = process_stat_ptr_get(pprocess_node->index_get());
+    pprocess_stat                       = process_stat_ptr_get(index);
     pprocess_stat->comm_stat            = def_PROCESS_COMM_FAILED;
+    m_app_runinfo.subprocess_comm_stat_[index]  = def_PROCESS_COMM_FAILED;
+    m_app_runinfo.should_log_           = true;
     child_argv[0]                       = pprocess_node->file_path_get();
     child_argv[1]                       = m_app_runinfo.config_file_path_;
     return _fork_subproc(child_argv[0], (char **)child_argv);
@@ -290,30 +293,45 @@ pid_t zygote::fork_subproc(process_node *pprocess_node)
 
 void zygote::comm_status_statistics(void)
 {
-    bool            comm_stat;
+    bool            comm_stat               = false;
+    bool            should_log              = false;
 	project_config	*pproject_config        = &t_project_datum.project_config_;
 	process_config  &process_conf	        = pproject_config->process_config_get();
 	process_node    *pprocess_node;
 	int             process_vector_no       = process_conf.process_vector_no_get();
     struct process_stat   *pprocess_stat   = NULL;
-	int             i;
+	int             i, index;
 
-    comm_stat                           = false;
     //统计子进程的通讯状态
     for (i = 0; i < process_vector_no; i++){
-        pprocess_node                   = process_conf.process_node_get(i);
+        pprocess_node                       = process_conf.process_node_get(i);
 
         if (false == pprocess_node->is_existed()){
             continue;
         }
-        pprocess_stat                   = process_stat_ptr_get(pprocess_node->index_get());
+        index                                      = pprocess_node->index_get();
+        pprocess_stat                              = process_stat_ptr_get(index);
         LOG_TRACE << "name:[" << pprocess_node->name_get()
                 << "] path:<" << pprocess_node->file_path_get() << "> comm_stat = "
                 << pprocess_stat->comm_stat;
         if (pprocess_stat->comm_stat  == def_PROCESS_COMM_OK){
-            comm_stat                   = true;
+            comm_stat                              = true;
 //                    break;
+        }else {
         }
+        //判断子进程通讯状态有无改变
+        if (m_app_runinfo.subprocess_comm_stat_[index] != pprocess_stat->comm_stat){
+            m_app_runinfo.subprocess_comm_stat_[index] = pprocess_stat->comm_stat;
+            should_log                             = true;
+        }
+    }
+    if (m_app_runinfo.should_log_ == true){
+        m_app_runinfo.should_log_                  = false;
+        should_log                                 = true;
+    }
+    if (should_log == true){
+        utils::log_binary_buf("subprocess comm stat array: ",
+                &(*m_app_runinfo.subprocess_comm_stat_.begin()), process_vector_no);
     }
     if (true == comm_stat){
         run_led_on();
@@ -362,7 +380,7 @@ int  zygote::fork_subproc_from_config(void)
 	process_config  &process_conf	            = pproject_config->process_config_get();
 	process_node    *pprocess_node;
 	int             process_vector_no           = process_conf.process_vector_no_get();
-    int             i;
+    int             i, index;
     pid_t           pid;
 
 	m_app_runinfo.map_pid_.clear();
@@ -370,10 +388,30 @@ int  zygote::fork_subproc_from_config(void)
         LOG_ERROR << "project xml config file error! none process want to fork to exec";
         return -1;
     }else {
+        //创建子进程通讯状态数组
+        m_app_runinfo.subprocess_comm_stat_.reserve(process_vector_no);
         //依据配置文件创建进程
         for (i = 0; i < process_vector_no; i++){
             pprocess_node                       = process_conf.process_node_get(i);
+            index                               = pprocess_node->index_get();
 
+            //要对配置的合法性进行判断
+            if (index != i){
+                //杀死已经创建的进程
+                g_sig_quit_                     = 1;
+                LOG_ERROR << "process[" << pprocess_node->name_get()
+                        << "] index(" << index << ") != "<< i;
+                return -1;
+            }else if (index > process_vector_no){
+                //杀死已经创建的进程
+                g_sig_quit_                     = 1;
+                LOG_ERROR << "process[" << pprocess_node->name_get()
+                        << "] index(" << index << ") > process numb(" << process_vector_no << ")";
+                return -1;
+            }
+            //写入默认值
+            m_app_runinfo.subprocess_comm_stat_[index]
+                                                = def_PROCESS_COMM_FAILED;
             if (false == pprocess_node->is_existed()){
                 continue;
             }
@@ -425,21 +463,21 @@ portBASE_TYPE zygote::run()
             }
             //统计子进程的通讯状态
             comm_status_statistics();
-            //处理子进程退出事件
-            if (1 == g_sig_chld_){
-                g_sig_chld_                     = 0;
-                LOG_INFO << "SIGCHLD deliver, call sig_chld_handle() to process it";
-                sig_chld_handle();
-            }
-            if (1 == g_sig_quit_){
-                g_sig_quit_                     = 0;
-                LOG_INFO << "SIG[" << g_sig_ << "] deliver, call quit() to process it";
-                quit();
-            }
         }
             break;
         default:
             break;
+        }
+        //处理子进程退出事件
+        if (1 == g_sig_chld_){
+            g_sig_chld_                     = 0;
+            LOG_INFO << "SIGCHLD deliver, call sig_chld_handle() to process it";
+            sig_chld_handle();
+        }
+        if (1 == g_sig_quit_){
+            g_sig_quit_                     = 0;
+            LOG_INFO << "SIG[" << g_sig_ << "] deliver, call quit() to process it";
+            quit();
         }
     }
 
@@ -484,6 +522,7 @@ int main(int argc, char**argv)
 	FILE    *stream;
 	zygote  *pzygote;
 
+
 #if (def_DBG_IN_PC_SINGLE > 0)
 	strcpy(config_file_path, PROCESS_PREFIX_PATH);
 	strcat(config_file_path, "config/config.xml");
@@ -503,6 +542,24 @@ int main(int argc, char**argv)
 	strcpy(config_file_path, log_file_path);
 	ptmp                                    = strrchr(log_file_path, '/');
 	strcpy(ptmp, "/../log/");
+	//依次执行mkdir -p dump ; cp -r * dump/   将log目录下的所有log文件拷贝到dump文件夹中
+	{
+        char    system_cmd[400];
+
+        strcpy(system_cmd, "/bin/mkdir -p ");
+        strcat(system_cmd, log_file_path);
+        strcat(system_cmd, "../log_dump/");
+//        LOG_INFO << system_cmd;
+        system(system_cmd);
+
+        strcpy(system_cmd, "/bin/cp -r ");
+        strcat(system_cmd, log_file_path);
+        strcat(system_cmd, "* ");
+        strcat(system_cmd, log_file_path);
+        strcat(system_cmd, "../log_dump/");
+//        LOG_INFO << system_cmd;
+        system(system_cmd);
+	}
 	strcat(log_file_path, pbase_name);
 
 	ptmp                                    = strrchr(config_file_path, '/');

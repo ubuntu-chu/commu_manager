@@ -18,7 +18,8 @@ struct _app_runinfo_{
     map<pid_t, process_node *>          map_pid_;
     const char *                       config_file_path_;
 
-
+    vector<char>                       subprocess_comm_stat_;
+    bool                               should_log_;
 
 };
 typedef struct _app_runinfo_ app_runinfo_t;
