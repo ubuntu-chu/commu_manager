@@ -199,7 +199,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 		return -1;
 	}
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1000 * 1000));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 10 * 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
     //获取进程状态结构体数组指针

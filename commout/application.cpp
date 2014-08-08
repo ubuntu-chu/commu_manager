@@ -111,7 +111,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     process_name_str                        = ProcessInfo::procname();
 
     //设置日志文件名称
-    g_logFile.reset(new muduo::LogFile(log_file_path, 20 * 1024 * 1024));
+    g_logFile.reset(new muduo::LogFile(log_file_path, 10 * 1024 * 1024));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
 
@@ -678,14 +678,17 @@ portBASE_TYPE CApplication::device_status_send(void)
 
     //此处要对处于dev_offline状态下的设备做一次扫描  确定其是否在线  注意此次扫描的等待时间应该缩短  扫描
     //结束后 再将等待时间恢复
-    for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
-        id                                  = (*preader_info)[i].m_id_;
-        if (DEV_OFFLINE == pdevice_rfid->reader_status_get(id)){
-            //巡查设备是否在线
-            pdevice_rfid->reader_id_set(id);
-            pdevice_rfid->max_wait_time_restore();
-            //发出巡查命令  让设备更新自身在线、离线状态
-            pdevice_rfid->query_readerinfo(NULL);
+    //通道电源打开时 扫描阅读器
+    if (pdevice_rfid->channel_power_get()){
+        for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
+            id                                  = (*preader_info)[i].m_id_;
+            if (DEV_OFFLINE == pdevice_rfid->reader_status_get(id)){
+                //巡查设备是否在线
+                pdevice_rfid->reader_id_set(id);
+                pdevice_rfid->max_wait_time_restore();
+                //发出巡查命令  让设备更新自身在线、离线状态
+                pdevice_rfid->query_readerinfo(NULL);
+            }
         }
     }
 
@@ -693,12 +696,16 @@ portBASE_TYPE CApplication::device_status_send(void)
     buff[len++]                             = m_app_runinfo.m_mode;
     //get channel power stat
     buff[len++]                             = pdevice_rfid->channel_power_get();
+    //get ability stat
+    buff[len++]                             = m_app_runinfo.m_ability;
     //get devices stat
     buff[len++]                             = m_app_runinfo.m_reader_numbs;
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
         id                                  = (*preader_info)[i].m_id_;
         buff[len++]                         = id;
         buff[len++]                         = pdevice_rfid->reader_status_get(id);
+        buff[len++]                         = (*preader_info)[i].m_power;
+        buff[len++]                         = (*preader_info)[i].m_scntm;
     }
     loop                                    = 0;
     do{

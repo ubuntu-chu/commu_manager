@@ -126,7 +126,12 @@ public:
     }
     int reader_status_get(uint8 id)
     {
-        return readerinfo_vec_[id].m_exist_;
+        //通道电源打开时 扫描阅读器
+        if (channel_power_get()){
+            return readerinfo_vec_[id].m_exist_;
+        }else {
+            return DEV_OFFLINE;
+        }
     }
 
     vector<struct reader_info> *reader_info_get(void)
