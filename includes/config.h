@@ -80,9 +80,19 @@ public:
 	    return log_level_;
 	}
 
+	void heartbeat_s_set(int sec)
+	{
+	    heartbeat_s_              = sec;
+	}
+	int heartbeat_s_get(void)
+	{
+	    return heartbeat_s_;
+	}
+
 private:
 	char   			            describe_[def_DESCRIBE_MAX_LEN];
 	char                       log_level_;
+	int                         heartbeat_s_;
 	led_config 				    led_;
 	power_config 				power_;
 	process_config 				process_;

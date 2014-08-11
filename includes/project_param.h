@@ -76,9 +76,6 @@
 #define    def_DEVICE_RFID_READER_NODE_NO      (6)
 
 
-//心跳包间隔时间 unit:s
-#define    def_HEART_BEAT_INTERVAL_S        (20)
-
 #define     RFID_READER_MAX_POWER               (30)
 #define     RFID_READER_MAX_SCNTIME             (255)
 #define     RFID_READER_MIN_SCNTIME             (3)
@@ -95,6 +92,7 @@
 #define     def_LOG_LEV_ERROR           ("error")
 #define     def_LOG_LEV_FATAL           ("fatal")
 
+#define     def_HEARTBEAT_S_STRING          ("heartbeat_s")
 
 #define     def_PROCESS_COMM_OK         (1)
 #define     def_PROCESS_COMM_FAILED     (0)

@@ -3,8 +3,10 @@
 CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
 #CROSS_COMPILE_NAME= 
 
-INSTALL_PATH_LIB_NAME=/home/barnard/work/commu_manager/manager/lib
-INSTALL_PATH_BIN_NAME=/home/barnard/work/commu_manager/manager/bin
+INSTALL_PATH=/home/barnard/work/commu_manager/manager
+INSTALL_DST_PATH=/home/barnard/work/board_9G25/rootfs_rfid/root/project/
+INSTALL_PATH_LIB_NAME=${INSTALL_PATH}/lib
+INSTALL_PATH_BIN_NAME=${INSTALL_PATH}/bin
 
 SRC_DIR="tinyxml parse utils reactor/muduo/base reactor/muduo/net zygote commout"
 CUR_PWD=`pwd`
@@ -33,4 +35,8 @@ do
 	fi
 	cd ${CUR_PWD}
 done
+
+echo "barnard" | sudo -S cp -r ${INSTALL_PATH}/* ${INSTALL_DST_PATH}
+
+
 

@@ -152,7 +152,16 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
         log_critical_print(__func__, NULL);
         return -1;
     }
-    if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
+//    if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
+    /*
+     *  Status 是应答的状态，其代表的意义如下表所述：
+     *  Status  说明
+     *  0x01  命令执行结束，同时返回询查到的电子标签数据
+     *  0x02  询查时间结束，命令执行强制退出，同时返回已询查到的标签数据
+     *  0x03  如果读到的标签数量无法在一条消息内传送完，将分多次发送。如果Status 为 0x03，则表示这条数据结束后，还有数据。
+     *  0x04  还有电子标签未读取，电子标签数量太多，读写器的存储区已满，返回此状态值，同时返回已询查到得电子标签数据。
+     */
+    if (0 != rt){
         log_print(__func__, rt, pvec_ret);
         return -1;
     }

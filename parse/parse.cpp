@@ -456,6 +456,7 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	//查找日志等级配置
     strAttrName                         = def_LOG_LEV_STRING;
     if (false == xml_QueryNode_Attribute(pRootEle, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     if (0 == strcmp(def_LOG_LEV_TRACE, value.c_str())){
@@ -472,14 +473,34 @@ int xml_parse(const char *path, project_config	*pproject_config)
         pproject_config->log_lev_set(Logger::FATAL);
     }
 
+	//查找heartbeat时间配置
+    strAttrName                         = def_HEARTBEAT_S_STRING;
+    int heartbeat_s;
+    if (false == xml_QueryNode_Attribute(pRootEle, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
+	    return  -1;
+    }
+    heartbeat_s                         = atoi(value.c_str());
+    if (heartbeat_s < 0){
+        LOG_ERROR << "hearbeat sec < 0!";
+        return -1;
+    }
+    if ((heartbeat_s < 10) || (heartbeat_s > 50)){
+        LOG_ERROR << "hearbeat sec should > 10 and < 50!";
+        return -1;
+    }
+    pproject_config->heartbeat_s_set(heartbeat_s);
+
 	//解析led
 	strNodeName                         = def_LED_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     led_conf.describe_set(value.c_str());
@@ -509,10 +530,12 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	strNodeName                         = def_POWER_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     power_conf.describe_set(value.c_str());
@@ -542,10 +565,12 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	strNodeName                         = def_PROCESS_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     process_conf.describe_set(value.c_str());
@@ -575,10 +600,12 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	strNodeName                         = def_PROTOCOL_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     protocol_conf.describe_set(value.c_str());
@@ -604,10 +631,12 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	strNodeName                         = def_IO_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     io_conf.describe_set(value.c_str());
@@ -698,10 +727,12 @@ int xml_parse(const char *path, project_config	*pproject_config)
 	strNodeName                         = def_DEVICE_STRING;
     xml_GetNodePointerByName(pRootEle, strNodeName, pNode);
     if (NULL == pNode) {
+        LOG_ERROR << "xml config has no " << strNodeName.c_str() << " node!";
 	    return  -1;
     }
     strAttrName                         = def_DESCRIBE_STRING;
     if (false == xml_QueryNode_Attribute(pNode, strAttrName, value)){
+        LOG_ERROR << "xml config has no " << strAttrName.c_str() << " attribute!";
 	    return  -1;
     }
     device_conf.describe_set(value.c_str());

@@ -208,7 +208,8 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 
     struct itimerspec new_value;
 
-    new_value.it_value.tv_sec               = t_project_datum.heart_beat_interval_get();
+    //通过配置文件来配置心跳时间
+    new_value.it_value.tv_sec               = t_project_datum.project_config_.heartbeat_s_get();
     new_value.it_value.tv_nsec              = 0;
     new_value.it_interval.tv_sec            = new_value.it_value.tv_sec;
     new_value.it_interval.tv_nsec           = new_value.it_value.tv_nsec;

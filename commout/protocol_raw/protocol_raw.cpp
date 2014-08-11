@@ -187,16 +187,13 @@ int  protocol_mac::validate_aframe(struct validate_aframe_info *pinfo, int& ipac
         goto quit;
     }
 
-#if 0
     //check sum
-//    chk_sum = LD_WORD(&pdata[frame_len-def_FRAME_HEAD_FRAME_LEN_SUM]);
     chk_sum = LD_WORD(&pdata[frame_len]);
     if (chk_sum != frm_ck_sum(
             reinterpret_cast<uint8_t *>(const_cast<char *>(pdata)), frame_len)) {
         rt                              = -3;
         goto quit;
     }
-#endif
 
 quit:
     LOG_INFO << "return value = " << rt << " ipacklen = " << ipacklen << " len = " << len;

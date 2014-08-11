@@ -218,6 +218,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
 		return -1;
 	}
     Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
+    LOG_INFO << "subprocess heartbeat sec = " << t_project_datum.project_config_.heartbeat_s_get();
 
     run_led_off();
     alarm_led_off();

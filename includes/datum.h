@@ -20,12 +20,6 @@ public:
     project_datum(){}
     ~project_datum(){}
 
-    int heart_beat_interval_get(void)
-    {
-        return def_HEART_BEAT_INTERVAL_S;
-    }
-
-
 //private:
     class shmem		    shmem_;
 //    project_config      *pproject_config_;
