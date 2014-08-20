@@ -251,6 +251,7 @@ bool com::_init(void)
     int     bps, stop, bits, parity;
     char parity_print;
 
+    //获取ios参数
 	pio_com_ext_node->ios_get(&com_path, bps, stop, bits, parity);
 
 	parity_print                        = parity;
@@ -272,10 +273,13 @@ bool com::_init(void)
     }
 
     connected_                          = true;
+    //创建通道
     channel_.reset(new Channel(loop_, fd_));
+    //设置可读事件处理函数
     channel_->setReadCallback(
         boost::bind(&com::handle_read, this, _1));
     LOG_TRACE << "enable channel readable begin";
+    //使能可读时间
     channel_->enableReading();
     LOG_TRACE << "enable channel readable end";
 
@@ -311,17 +315,20 @@ int com::send_data(char *pdata, size_t len)
 
 int com::_send_data(char *pdata, size_t len)
 {
+    //调用dev_write发送数据
     send_status_end(dev_write(fd_, pdata, len));
 
     return len;
 }
 
+//可读事件处理
 void com::handle_read(Timestamp receiveTime)
 {
     char buf[1000];
     ssize_t len;
 
     while (1){
+        //读取所有数据
         len = read(fd_, (char *) buf, sizeof(buf));
         if (len < 0) {
             if (errno == EINTR) {
@@ -334,6 +341,7 @@ void com::handle_read(Timestamp receiveTime)
         }
     }
     if (len > 0){
+        //如有数据到达 则将数据推入到channel中
         io_base::on_read(buf, len, 0);
     }
 }

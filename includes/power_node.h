@@ -3,6 +3,7 @@
 
 #include "project_param.h"
 
+//led 节点
 class led_node{
 public:
 	led_node(){}
@@ -21,6 +22,7 @@ public:
 	bool led_off(void){return led_ctrl('0');}
 	bool led_exist_chk(void)
 	{
+	    //通过对设备文件的打开 来判断led是否存在
 	    fd_ = open(path_, O_WRONLY);
 	    return (fd_ < 0)?(false):(true);
 	}
@@ -65,6 +67,7 @@ public:
 	    int  i;
 	    led_node *pnode   = &led_vecotr_[0];
 
+	    //在led节点数组中 查找led节点  匹配依据：name
 	    for (i = 0; i < index_; i++){
 	        if (0 == strcmp(name, pnode->name_get())){
 	            break;
@@ -78,8 +81,11 @@ public:
 	    return pnode;
 	}
 private:
+	//描述在整个工程中没有用到
 	char   			describe_[def_DESCRIBE_MAX_LEN];
+	//index_的值代表了工程中有多少个led节点
 	unsigned char index_;
+	//led节点数组
 	led_node        led_vecotr_[def_LED_NODE_NO];
 };
 

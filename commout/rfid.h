@@ -3,9 +3,11 @@
 
 #include <includes/includes.h>
 
+//设置在线、离线宏定义
 #define         DEV_ONLINE                              (1)
 #define         DEV_OFFLINE                             (0)
 
+//此定义 请参考厂家的通讯说明
 struct rfid_protocol_cmd{
 	uint8			m_len;
 	uint8			m_addr;
@@ -15,6 +17,7 @@ struct rfid_protocol_cmd{
 	uint8			m_crchigh;
 };
 
+//此结构体定义 请参考厂家的通讯说明
 struct rfid_protocol_rsp{
 	uint8			m_len;
 	uint8			m_addr;
@@ -32,7 +35,7 @@ struct rfid_rsp_info{
 	uint8           m_addr;
 };
 
-
+//此结构体定义 请参考厂家的通讯说明
 struct epc_info{
 	uint8			m_numb;
 	//max epc array len is 255
@@ -40,6 +43,8 @@ struct epc_info{
 	uint8			m_len;
 };
 
+
+//此定义 请参考厂家的通讯说明
 enum freqband{
 	USER_BAND	= 0,
 	CHINESE_BAND,
@@ -47,6 +52,7 @@ enum freqband{
 	KOREAN_BAND,
 };
 
+//此定义 请参考厂家的通讯说明
 struct reader_info{
 	uint8			m_version_hi;
 	uint8			m_version_low;
@@ -64,6 +70,7 @@ struct reader_info{
 	uint8           m_exist_;           //在线信息
 };
 
+//此定义 请参考厂家的通讯说明
 enum memory{
 	MEM_RESERVE		= 0,
 	MEM_EPC,
@@ -71,6 +78,7 @@ enum memory{
 	MEM_USER,
 };
 
+//此定义 请参考厂家的通讯说明
 struct read_info{
 	uint8_t			m_enum;
 	//epc own a fixed len
@@ -82,6 +90,7 @@ struct read_info{
 	uint8_t			m_pwd[4];
 };
 
+//此定义 请参考厂家的通讯说明
 struct write_info{
 	//word len   1 word = 2 bytes
 	uint8_t			m_wnum;
@@ -99,21 +108,27 @@ struct write_info{
 
 class channel;
 
+//此类实现了rfid阅读器的具体操作
 class CDevice_Rfid:boost::noncopyable{
 public:
     CDevice_Rfid():max_wait_time_(def_RFID_DEF_MAX_WAIT_TIME),
         reader_id_(0),
+        //参考厂家的通讯说明手册 可看到这两个值的定义
+        //ofsset是指阅读器返回的数据 在整个数据帧中的偏移
         offset_(4),
+        //status是指阅读返回的状态字节 在整个数据帧中的偏移
         status_(3){};
     ~CDevice_Rfid(){};
 
+    //reader_id 必须与阅读器通讯协议中的 设备地址 相符
     void reader_id_set(uint8 id){reader_id_ = id;}
+    //设置同一通道下的阅读器数量  目前应用中  只支持一个通道下挂载一个阅读器设备
     void reader_no_set(uint8 no)
     {
         vector<struct reader_info>::iterator it;
         struct reader_info t_reader_info;
         int i;
-
+        //初始化阅读器信息值
         t_reader_info.m_offline_cnt_               = 0;
         t_reader_info.m_exist_                     = DEV_OFFLINE;
         t_reader_info.m_power                      = 0;
@@ -130,6 +145,7 @@ public:
         if (channel_power_get()){
             return readerinfo_vec_[id].m_exist_;
         }else {
+        //通道电源关闭， 阅读器一定处于离线状态
             return DEV_OFFLINE;
         }
     }
@@ -137,6 +153,7 @@ public:
     vector<struct reader_info> *reader_info_get(void)
     {
 //        return &readerinfo_vec_[id];
+        //阅读器信息容器首地址
         return &readerinfo_vec_;
     }
 
@@ -150,12 +167,13 @@ public:
 	static portBASE_TYPE epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc);
 	int channel_power_get(void);
 
+	//将阅读器的巡查时间 恢复为默认值
 	portBASE_TYPE max_wait_time_restore(void)
 	{
         readerinfo_vec_[reader_id_].m_scntm = def_RFID_DEF_MAX_WAIT_TIME*10;
         return 0;
     }
-
+	//获取通道下 在线的阅读器数量
 	int rfid_device_online_no_get(void)
 	{
         vector<struct reader_info>::iterator it;
@@ -171,6 +189,7 @@ public:
         return no;
 	}
 
+	//获取第index个处于在线状态的阅读器id ,即阅读器的地址
 	int rfid_device_id_get(int index)
     {
         vector<struct reader_info>::iterator it;
@@ -189,6 +208,7 @@ public:
         return it->m_id_;
     }
 
+	//获取通道下阅读器链表头
 	list_head_t *device_list_head_get();
     int device_no_get(void);
 

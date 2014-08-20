@@ -3,6 +3,7 @@
 
 using std::string;
 
+//此部分代码 来源与网上关于tinyxml的帖子  请参考网上关于tinyxml的资料
 bool xml_load(TiXmlDocument&doc, const char *path)
 {
     //load file
@@ -323,11 +324,10 @@ bool xml_AddNode_Attribute(TiXmlElement *pRootEle, std::string strParNodeName,
         return false;
 }
 
-int config_relative_set(void)
+//配置文件中的节点与节点之间的关联设定
+//需要设置的关联有： 1， io_type为down_rs485与设备之间的关联    2.io_type为down_rs485与io_type为ext_client之间的关系
+int config_relative_set(project_config	*pproject_config)
 {
-        //将工程配置信息写入到共享内存后 重新更新引用的值
-//	project_config	*pproject_config     = t_project_datum.pproject_config_;
-	project_config	*pproject_config    = &t_project_datum.project_config_;
 	power_config 	&power_conf	        = pproject_config->power_config_get();
 //	process_config 	&process_conf	    = pproject_config->process_config_get();
 //	protocol_config &protocol_conf	    = pproject_config->protocol_config_get();
@@ -343,16 +343,18 @@ int config_relative_set(void)
     list_head_t     *phead;
     list_node_t     *pnode;
 
-    //初始化io_node上设备链表
+    //初始化io_node上设备链表  将链表初始化为空
+    //遍历所有的io_node类型
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
+        //遍历此种io_node下的所有io_node节点
         for (j = 0; j < io_vector_no; j++){
             pio_node                    = io_conf.io_vector_get(i, j);
             phead                       = pio_node->device_list_head_get();
             list_init(phead);
-            //初始化通道电源组
+            //初始化通道电源组 对于 io_type为down_rs485类型的io_node 有电源控制
             if (i == IO_TYPE_EXT_COM){
-                //与power_node建立联系
+                //与power_node建立联系   关联的依据为name
                 reinterpret_cast<io_com_node *>(pio_node)
                         ->power_node_set(power_conf.power_node_get(
                                 reinterpret_cast<io_com_node *>(pio_node)
@@ -360,7 +362,7 @@ int config_relative_set(void)
             }
         }
     }
-    //将设备挂接到所属io_node的设备链表上
+    //遍历所有的设备   将设备挂接到所属io_node的设备链表上
     for (ii = device_conf.device_type_start(); ii < device_conf.device_type_end(); ii++){
         device_vector_no               = device_conf.device_vector_no_get(ii);
         for (jj = 0; jj < device_vector_no; jj++){
@@ -371,7 +373,7 @@ int config_relative_set(void)
                 io_vector_no                    = io_conf.io_vector_no_get(i);
                 for (j = 0; j < io_vector_no; j++){
                     pio_node                    = io_conf.io_vector_get(i, j);
-                    //将设备挂接到所属io_node的设备链表上
+                    //将设备挂接到所属io_node的设备链表上  关联的依据是name
                     if (0 == strcmp(pdevice_node->io_get(), pio_node->name_get())){
                         phead                   = pio_node->device_list_head_get();
                         list_insert_after(phead, pnode);
@@ -407,6 +409,8 @@ int config_relative_set(void)
 
     io_node         *pio_node_map;
     //处理io_node之间的map关系
+    //io_type为down_rs485与io_type为ext_client之间的关系
+    //关联依据为name
     for (i = io_conf.io_type_start(); i < io_conf.io_type_end(); i++){
         io_vector_no                    = io_conf.io_vector_no_get(i);
         for (j = 0; j < io_vector_no; j++){
@@ -793,7 +797,7 @@ int xml_parse(const char *path, project_config	*pproject_config)
 //    memcpy(pshmem_addr, &t_project_config, sizeof(t_project_config));
 //    t_project_datum.pproject_config_        = reinterpret_cast<project_config *>(pshmem_addr);
 
-    config_relative_set();
+    config_relative_set(pproject_config);
 
 	return 0;
 }

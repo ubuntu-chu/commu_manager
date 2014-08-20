@@ -2,7 +2,7 @@
 #include <channel.h>
 #include <utils.h>
 
-
+//帧控制域初始化
 void CDevice_net::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, uint8 total, uint8 index, uint8 func_code, uint8 *pbuf, uint16 len)
 {
     protocol *pprotocol             = pchannel_->protocol_get();
@@ -19,6 +19,7 @@ mac_frm_ctrl_t CDevice_net::mac_frm_ctrl_init(uint8 ack, uint8 dir, uint8 ack_re
     return pprotocol_mac->mac_frm_ctrl_init(ack, dir, ack_req, frm_type);
 }
 
+//从一帧数据中初始化控制域结构体
 int8 CDevice_net::frm_ctrl_unpack(uint8_t* pbuf, uint16 len, frame_ctl_t *pfrm_ctl)
 {
 
@@ -36,6 +37,7 @@ int CDevice_net::_package_send(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pb
 
     vec_send_.clear();
 
+    //初始化控制域
     frm_ctl_init(&t_frm_ctl, frm_ctl, 1, 0, func_code, (uint8 *)pbuf, len);
     //组装数据
     for (i = 0; i < sizeof(frame_ctl_t); i++){
@@ -50,6 +52,7 @@ int CDevice_net::_package_send(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pb
     return 0;
 }
 
+//发送数据
 int CDevice_net::package_send(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pbuf, uint16 len)
 {
     _package_send(func_code, frm_ctl, pbuf, len);
@@ -59,6 +62,7 @@ int CDevice_net::package_send(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pbu
     return 0;
 }
 
+//发送数据 并等待应答
 int CDevice_net::package_send_sync(uint8 func_code, mac_frm_ctrl_t frm_ctl, char *pbuf, uint16 len)
 {
     _package_send(func_code, frm_ctl, pbuf, len);
@@ -102,6 +106,7 @@ int CDevice_net::package_send_readerinfo(char *pbuf, uint16 len)
         frm_ctrl_unpack(reinterpret_cast<uint8_t *>(&((*pvec_ret)[0])),
                 pvec_ret->size(), &t_frame_ctl);
         //t_frame_ctl.data_ptr[0]  result
+        //判断帧的控制域内容是否正确 是否接收到了应答
         if ((t_frame_ctl.data_ptr[0] != 0)
             || (t_frame_ctl.app_frm_ptr.fun != func_code)
             || (t_frame_ctl.mac_frm_ptr.ctl.ack_mask != 1)){
@@ -133,13 +138,16 @@ portBASE_TYPE CDevice_net::package_event_fetch(void)
     //接收到正确、完整帧
     if (enum_CH_FETCH_AFRAME == pchannel_->fetch(vec_recv_)){
         frame_ctl_t     t_frame_ctl;
+        //获取通道下挂载设备链表
         list_head_t     *device_maped_list_head  = pchannel_->device_maped_list_head_get();
         device_node     *pdevice_node = list_entry_offset(device_maped_list_head->m_next,
                                             class device_node, device_node::node_offset_get());
 
+        //解析控制域
         frm_ctrl_unpack(reinterpret_cast<uint8_t *>(&*vec_recv_.begin()),
                 vec_recv_.size(), &t_frame_ctl);
 
+        //判断类型是否是rfid类型
         if (t_frame_ctl.mac_frm_ptr.type != pdevice_node->class_type_get()){
             uint8   rsp_code            = RSP_TYPE_ERR;
 
@@ -147,6 +155,7 @@ portBASE_TYPE CDevice_net::package_event_fetch(void)
             LOG_ERROR  << "Net pakage:dev type error";
             return  (portBASE_TYPE)-1;
         }
+        //调用网络包事件处理函数
         if (m_handler != NULL){
             m_handler(&t_frame_ctl, t_frame_ctl.data_ptr, t_frame_ctl.app_frm_ptr.len);
         }

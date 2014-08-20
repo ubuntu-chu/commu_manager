@@ -6,6 +6,7 @@
 using std::string;
 using muduo::net::Buffer;
 
+//未使用
 class protocol_runinfo {
 public:
     uint32      m_nRcvPackTotal;       //接受数据包累计
@@ -18,6 +19,7 @@ public:
     uint32      m_nErrPackRate;        //误包率
 };
 
+//未使用
 class protocol_info{
 public:
     protocol_info(){}
@@ -70,6 +72,7 @@ public:
     //解析一帧报文
     virtual bool process_aframe(const char * pdata, int len, int iflag = 0);
 
+    //将数据写入通道
     int write_tochannel(const char *pdata, int len);
 
     //下行报文打包函数  目前不关心其返回值  程序可返回其打包后的整体长度
@@ -96,16 +99,16 @@ public:
     static protocol *protocol_create(const char *name);
 
 protected:
-	Buffer              inbuffer_;
-	Buffer              outbuffer_;
-    channel             *pchannel_;
+	Buffer              inbuffer_;                          //接收buffer
+	Buffer              outbuffer_;                         //发送buffer
+    channel             *pchannel_;                         //协议所关联的通道
 
 private:
     string              name_;
 	string   			describe_;
 
-    boost::shared_ptr<protocol_info> info_;
-	protocol_runinfo    runinfo_;
+    boost::shared_ptr<protocol_info> info_;                 //未使用
+	protocol_runinfo    runinfo_;                           //未使用
 };
 
 

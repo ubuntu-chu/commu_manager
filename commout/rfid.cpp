@@ -8,6 +8,7 @@ extern void process_stat_set(int stat);
 
 //6即len addr recmd status lsb-crc16 msb-crc16
 #define     def_RFID_FIX_RESPONSE_LEN       (6)
+//整个帧中 数据部分的长度
 #define     RECV_DATA_LEN_GET(tot_size)     ((tot_size) - def_RFID_FIX_RESPONSE_LEN)
 
 //command list
@@ -41,7 +42,7 @@ enum rfid_reader_cmd{
 	READER_WORKMODEPARAM    = 0x36,
 };
 
-
+//获取ecp号   函数原理请参考厂家的通讯说明
 portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *penumb, uint8 *pepc)
 {
 	uint8		*pbuf;
@@ -77,17 +78,18 @@ portBASE_TYPE CDevice_Rfid::epc_get(struct epc_info *pinfo, uint8 numb, uint8 *p
 	return 0;
 }
 
+//基础函数 完成rfid阅读器的写入数据、接收数据过程
 int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, vector<char> **ppvec_ret)
 {
     int            rt;
     int            max_wait_time;
-//    struct process_stat   *pprocess_stat;
 
     if (pchannel_ == NULL){
         return -1;
     }
     //调用通道写函数
     //readerinfo_vec_[reader_id_].m_scntm 单位100ms
+    //等待阅读器应答的最大时间  单位：s
     max_wait_time                   = readerinfo_vec_[reader_id_].m_scntm/10;
     if (0 == max_wait_time){
         max_wait_time               = 1;
@@ -97,20 +99,23 @@ int CDevice_Rfid::channel_write_sync_inloop(vector<char> &vec, int wait_time, ve
     //rt > 0 代表操作超时
     if (rt > 0){
         readerinfo_vec_[reader_id_].m_offline_cnt_++;
-        //与设备通讯超时3次后 认为设备离线
+        //与设备通讯超时1次后 认为设备离线
         if (readerinfo_vec_[reader_id_].m_offline_cnt_ > 1){
             readerinfo_vec_[reader_id_].m_exist_    = DEV_OFFLINE;
         }
+    //接收到完整帧或错误帧  都认为阅读器在线
     }else {
         readerinfo_vec_[reader_id_].m_offline_cnt_  = 0;
         readerinfo_vec_[reader_id_].m_exist_        = DEV_ONLINE;
+        //更新数据帧中 数据区 长度
         recv_data_len_                              = RECV_DATA_LEN_GET((**ppvec_ret).size());
     }
-//    pprocess_stat                                   = process_stat_ptr_get();
-    //没有在线设备  通讯异常
+    //通道下没有在线设备  通讯异常
     if (0 == rfid_device_online_no_get()){
+        //设置通讯异常值
         process_stat_set(def_PROCESS_COMM_FAILED);
     }else {
+        //设置通讯正常值
         process_stat_set(def_PROCESS_COMM_OK);
     }
 
@@ -126,6 +131,7 @@ void CDevice_Rfid::log_print(const char *func, int rt, vector<char> *pvec_ret)
     }
 }
 
+//严重错误
 void CDevice_Rfid::log_critical_print(const char *func, const char *msg)
 {
     if (NULL != msg){
@@ -135,6 +141,7 @@ void CDevice_Rfid::log_critical_print(const char *func, const char *msg)
     }
 }
 
+//巡查rfid标签
 portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
 {
     vector<char>   vec_send;
@@ -152,7 +159,6 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
         log_critical_print(__func__, NULL);
         return -1;
     }
-//    if ((0 != rt) || ((*pvec_ret)[status_] != 1)){
     /*
      *  Status 是应答的状态，其代表的意义如下表所述：
      *  Status  说明
@@ -174,6 +180,7 @@ portBASE_TYPE CDevice_Rfid::query_rfid(struct epc_info *pinfo)
 	return 0;
 }
 
+//读取rfid标签中的数据
 portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
 {
     vector<char>   vec_send;
@@ -216,6 +223,7 @@ portBASE_TYPE CDevice_Rfid::read_data(struct read_info *pinfo, uint8 *pbuf)
 	return 0;
 }
 
+//写数据到rfid标签中
 portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
 {
     vector<char>   vec_send;
@@ -263,6 +271,7 @@ portBASE_TYPE CDevice_Rfid::write_data(struct write_info *pinfo, uint8 *pbuf)
 	return 0;
 }
 
+//查询rfid阅读器信息
 portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
 {
     vector<char>   vec_send;
@@ -286,7 +295,7 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
         log_print(__func__, rt, pvec_ret);
         return -1;
     }
-    //更新设备的扫描时间
+    //更新阅读器信息
     readerinfo_vec_[reader_id_].m_version_hi      = static_cast<uint8>((*pvec_ret)[offset_+0]);
     readerinfo_vec_[reader_id_].m_version_low     = static_cast<uint8>((*pvec_ret)[offset_+1]);
     readerinfo_vec_[reader_id_].m_type            = static_cast<uint8>((*pvec_ret)[offset_+2]);
@@ -316,6 +325,7 @@ portBASE_TYPE CDevice_Rfid::query_readerinfo(struct reader_info *info)
 	return 0;
 }
 
+//阅读器巡查时间设置
 portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
 {
     vector<char>   vec_send;
@@ -345,7 +355,7 @@ portBASE_TYPE CDevice_Rfid::querytime_set(uint8 scantime)
 	return 0;
 }
 
-
+//阅读器功率设置
 portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
 {
     vector<char>   vec_send;
@@ -375,6 +385,7 @@ portBASE_TYPE CDevice_Rfid::power_set(uint8 power)
 	return 0;
 }
 
+//阅读器声音设置   声音的设置过程很繁琐  请参考厂家的通讯说明
 portBASE_TYPE CDevice_Rfid::sound_set(uint8 on)
 {
     vector<char>   vec_send;
@@ -467,6 +478,7 @@ int CDevice_Rfid::device_no_get(void)
     return pchannel_->device_no_get();
 }
 
+//获取通道电源状态
 int CDevice_Rfid::channel_power_get(void)
 {
     return pchannel_->power_get();

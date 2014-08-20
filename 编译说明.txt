@@ -1,0 +1,14 @@
+
+在当前目录下 执行./make.sh 进行编译    执行./makeclean.sh 进行清除
+
+
+在make.sh文件中
+
+CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
+#CROSS_COMPILE_NAME= 
+
+CROSS_COMPILE_NAME 决定是否进行交叉编译  当
+CROSS_COMPILE_NAME=arm-none-linux-gnueabi- 时   进行交叉编译
+
+当CROSS_COMPILE_NAME为空时   则编译PC版本
+

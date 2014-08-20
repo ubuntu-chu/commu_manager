@@ -1,5 +1,6 @@
 #!/bin/sh
 
+#执行过程与 make.sh 相同 ，请参考make.sh的注释
 CROSS_COMPILE_NAME=arm-none-linux-gnueabi-
 #CROSS_COMPILE_NAME= 
 

@@ -9,6 +9,7 @@
 #include <datum.h>
 #include <parse.h>
 
+//def_DBG_IN_PC_SINGLE宏 当在pc端调试时，此宏的值定义为1  嵌入式版本时 定义为0
 #define     def_DBG_IN_PC_SINGLE        (0)
 
 #if (def_DBG_IN_PC_SINGLE > 0)
@@ -21,6 +22,7 @@ boost::scoped_ptr<muduo::LogFile> g_logFile;
 
 void outputFunc(const char* msg, int len)
 {
+    //追加到日志文件后面
     g_logFile->append(msg, len);
     //因为在使用文件作为日志时  写入的数据存放在fp所自带的缓冲区中 并没有真正的写入文件 所以执行
     //flush强制进行写入
@@ -34,13 +36,6 @@ void flushFunc()
 
 using namespace muduo;
 using namespace muduo::net;
-
-void signal_handle(int sign_no)
-{
-    if (sign_no == SIGINT){
-//        t_project_datum.pevent_loop_->quit();
-    }
-}
 
 struct process_stat   *g_pprocess_stat = NULL;
 
@@ -56,7 +51,7 @@ void process_stat_set(int stat)
 
 void process_stat_ptr_set(int index)
 {
-    //获取进程状态结构体数组指针
+    //获取进程状态结构体数组指针   将共享内存映射到本进程的地址空间
     t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
 
     g_pprocess_stat   = t_project_datum.pprocess_stat_ + index;
@@ -79,6 +74,7 @@ CApplication *CApplication::GetInstance(void)
     return (m_pcapplicaiton);
 }
 
+//设备定义
 static  CDevice_Rfid       s_Device_rfid;
 static  CDevice_net        s_Device_net;
 
@@ -97,15 +93,15 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 	m_app_runinfo.m_pdevice_rfid            = &s_Device_rfid;
 	m_app_runinfo.m_pdevice_net             = &s_Device_net;
 	m_app_runinfo.m_ability                 = TERMINAL_ABILITY_NONE;
+	//初始化为主动模式
     m_app_runinfo.m_mode                    = MODE_INITIATIVE;
+    //获取父进程pid
     m_app_runinfo.ppid_                     = ::getppid();
 
     //设置网络包处理函数
     m_app_runinfo.m_pdevice_net->package_event_handler_set(
             boost::bind(&CApplication::package_event_handler,
             this, _1, _2, _3));
-
-//    utils::signal_handler_install(SIGINT, signal_handle);
 
     //获取进程名字
     process_name_str                        = ProcessInfo::procname();
@@ -121,18 +117,16 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
 		return -1;
     }
 	LOG_INFO << "parse project xml config file: " << config_file_path;
+	//解析配置文件
 	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
 		LOG_ERROR << "project xml config file parse failed!";
 
 		return -1;
 	}
-//    t_project_datum.pproject_config_    = reinterpret_cast<project_config *>(t_project_datum.shmem_.attach());
 	project_config	*pproject_config    = &t_project_datum.project_config_;
 	io_config       &io_conf	        = pproject_config->io_config_get();
-//    Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(pproject_config->log_lev_get()));
     Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
-//    Logger::setLogLevel(muduo::Logger::INFO);
 
     LOG_INFO  << "CApplication::init------------------------";
 
@@ -143,17 +137,15 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
         io_vector_no                    = io_conf.io_vector_no_get(i);
         for (j = 0; j < io_vector_no; j++){
             pio_node                    = io_conf.io_vector_get(i, j);
-            //查找io配置中属于当前进程的io_node
+            //查找io配置中属于当前进程的io_node 查找规则：io_node的process属性值
             if (0 == strcmp(process_name_str.c_str(), pio_node->process_get())){
                 channel *pchannel = channel::channel_create(pio_node);
                 m_app_runinfo.channel_vector_.push_back(pchannel);
-//                channel_vector.push_back(channel::channel_create(pio_node));
+                //关联通道
                 if (pchannel->contain_protocol(def_PROTOCOL_RFID_NAME)){
-
                     m_app_runinfo.m_pdevice_rfid->channel_set(pchannel);
                 }
                 if (pchannel->contain_protocol(def_PROTOCOL_MAC_NAME)){
-
                     m_app_runinfo.m_pdevice_net->channel_set(pchannel);
                 }
                 channel_no++;
@@ -179,6 +171,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     for (i = 0; i < process_vector_no; i++){
         pprocess_node                   = process_conf.process_node_get(i);
 
+        //查找本进程索引值  查找依据：进程名字
         if (0 == strcmp(process_name_str.c_str(), pprocess_node->name_get())){
 
             process_index                   = pprocess_node->index_get();
@@ -187,7 +180,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
             break;
         }
     }
-
+    //判断进程索引合法性
     if (process_index >= process_vector_no){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
 		LOG_ERROR << "project xml config file error! process index >= process numb";
@@ -204,8 +197,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     {
         LOG_SYSFATAL << "Failed in timerfd_create";
     }
-	//设定1s循环定时
-
+	//设定循环定时
     struct itimerspec new_value;
 
     //通过配置文件来配置心跳时间
@@ -221,6 +213,7 @@ portBASE_TYPE CApplication::init(const char *log_file_path, const char *config_f
     return 0;
 }
 
+//拼接 reader info信息
 void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
 {
     uint16          len                     = 0;
@@ -239,13 +232,14 @@ void CApplication::content_readerinfo_make(uint8 *pbuf, uint16 *plen)
         pbuf[len++]                     = (*preader_info)[i].m_id_;
         pbuf[len++]                     = (*preader_info)[i].m_exist_;
         pbuf[len++]                     = (*preader_info)[i].m_power;
-        pbuf[len++]                     = (*preader_info)[i].m_scntm;
+        pbuf[len++]                     = (*preader_info)[i].m_scntm;       //扫描时间
     }
     if (NULL != plen){
         *plen                           = len;
     }
 }
 
+//查询阅读器信息
 portBASE_TYPE CApplication::readerrfid_query(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
@@ -274,6 +268,7 @@ portBASE_TYPE CApplication::readerrfid_query(uint8 *pbuf, uint16 *plen)
     return 0;
 }
 
+//rfid阅读器初始化
 portBASE_TYPE CApplication::readerrfid_init(void)
 {
     CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
@@ -284,8 +279,9 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     uint16          len                    = 0;
     int             rfid_device_online_no;
 
+    //查询阅读器信息
     readerrfid_query(buffer, &len);
-
+    //获取在线阅读器数量
     rfid_device_online_no               = pdevice_rfid->rfid_device_online_no_get();
     LOG_INFO << "rfid device config no [" << m_app_runinfo.m_reader_numbs
             << "]; exist no [" << rfid_device_online_no
@@ -306,7 +302,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     if (rt != 0){
         LOG_WARN << "no respond from remote, sleep 1 and try again; loop = [" << s_try_loop << "]";
         CurrentThread::sleepUsec(1*1000*1000);
-
+        //重复s_try_loop次
         return (s_try_loop-- == 0)?(0):(-2);
     }else {
     }
@@ -321,6 +317,7 @@ portBASE_TYPE CApplication::readerrfid_init(void)
     return 0;
 }
 
+//rfid阅读器声音设置
 portBASE_TYPE CApplication::readerrfid_sound_set(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
@@ -339,7 +336,7 @@ portBASE_TYPE CApplication::readerrfid_sound_set(uint8 *pbuf, uint16 *plen)
         rsp                                 = RSP_INVALID_PARAM_LEN;
         goto quit;
     }
-
+    //遍历所有阅读器
     for (i = 0; i < m_app_runinfo.m_reader_numbs; ++i) {
 
         pdata                               = &pbuf[1 + i*2];
@@ -368,6 +365,7 @@ quit:
     return (rsp);
 }
 
+//rfid阅读器参数设置   这些函数的内容请参考 通讯协议
 portBASE_TYPE CApplication::readerrfid_write(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
@@ -436,6 +434,7 @@ quit:
     return (rsp);
 }
 
+//rfid阅读器读取rfid标签epc信息
 portBASE_TYPE CApplication::containerrfid_r_epc(CDevice_Rfid    *pdevice_rfid)
 {
     return pdevice_rfid->query_rfid(&m_app_runinfo.m_epcinfo);
@@ -476,6 +475,7 @@ portBASE_TYPE CApplication::containerrfid_w_epc(CDevice_Rfid    *pdevice_rfid, u
     return 0;
 }
 
+//此部分与rfid标签内的格式有关  请参考 厂家的通讯说明中的内容
 const uint8     user_region_start_index     = 0;
 //unit: word
 const uint8     user_region_len             = 6;
@@ -483,6 +483,7 @@ enum{
     RECORD_INFO_DATA    = 0x01,
 };
 
+//rfid阅读器读取rfid标签信息
 portBASE_TYPE CApplication::containerrfid_r_data(CDevice_Rfid   *pdevice_rfid, uint8 index, uint8 *pbuff, uint16 *plen, uint8 ctrl)
 {
     struct read_info t_readinfo;
@@ -491,13 +492,16 @@ portBASE_TYPE CApplication::containerrfid_r_data(CDevice_Rfid   *pdevice_rfid, u
     uint16          cur_len;
 
     //read data
+    //先获取标签epc号
     if (0 == CDevice_Rfid::epc_get(&m_app_runinfo.m_epcinfo, index, &t_readinfo.m_enum, t_readinfo.m_epcarray)){
+        //判断是否要读取数据
         if (ctrl & RECORD_INFO_DATA){
             //read from user region
             t_readinfo.m_mem    = MEM_USER;
             t_readinfo.m_wordptr = user_region_start_index;
             t_readinfo.m_num    = user_region_len;
 
+            //读取后的数据 存放在m_app_runinfo.m_rfidinfo.m_initseq_hi地址处的内存中
             if ((rt = pdevice_rfid->read_data(&t_readinfo, &m_app_runinfo.m_rfidinfo.m_initseq_hi))){
             }
             if (0 == rt){
@@ -510,6 +514,7 @@ portBASE_TYPE CApplication::containerrfid_r_data(CDevice_Rfid   *pdevice_rfid, u
     }else {
         rt                  = -1;
     }
+    //将标签的信息拷贝到pbuff指向的内存中
     if ((0 == rt) && (NULL != pbuff)){
         cur_len                     = sizeof(t_readinfo.m_epcarray);
         *pbuff++                    = t_readinfo.m_enum<<1;
@@ -530,12 +535,14 @@ portBASE_TYPE CApplication::containerrfid_r_data(CDevice_Rfid   *pdevice_rfid, u
     return (rt);
 }
 
+//rfid阅读器写标签数据  -执行函数
 portBASE_TYPE CApplication::containerrfid_w_data(CDevice_Rfid   *pdevice_rfid, uint8 epc_len, uint8 *pepc, uint8 *pdata)
 {
     portBASE_TYPE   try_cnt         = 10;
     portBASE_TYPE   rt;
     struct write_info t_writeinfo;
 
+    //尝试写标签的次数
     while (try_cnt > 0){
         t_writeinfo.m_enum          = epc_len >> 1;
         memcpy((void *)t_writeinfo.m_epcarray, (void *)pepc, epc_len);
@@ -558,6 +565,7 @@ portBASE_TYPE CApplication::containerrfid_w_data(CDevice_Rfid   *pdevice_rfid, u
     return (try_cnt == 0)?(-1):(0);
 }
 
+//rfid阅读器写标签数据
 uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
 {
     CDevice_Rfid    *pdevice_rfid          = m_app_runinfo.m_pdevice_rfid;
@@ -568,6 +576,7 @@ uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
         rsp                                 = RSP_INVALID_PARAM;
         goto quit;
     }
+    //判断此阅读器是否处于离线状态
     if (DEV_OFFLINE == pdevice_rfid->reader_status_get(pbuf[0])){
         rsp                                 = RSP_INVALID_PARAM;
         goto quit;
@@ -576,13 +585,14 @@ uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
     //设置阅读器id信息
     pdevice_rfid->reader_id_set(pbuf[0]);
     //epc len + epc
-    //check epc len
+    //check epc len   ecp长度固定
     if (pbuf[1] != FIXED_EPC_LEN){
         rsp                                 = RSP_INVALID_PARAM_LEN;
         goto quit;
     }
     //check data len
     data_pos                                = pbuf[1]+2;
+    //数据区长度固定
     if (pbuf[data_pos]  != FIXED_DATA_LEN){
         rsp                                 = RSP_INVALID_PARAM_LEN;
         goto quit;
@@ -592,6 +602,7 @@ uint8 CApplication::protocol_rfid_write(uint8 *pbuf, uint16 len)
         rsp                                 = RSP_ABILITY_ERR;
         goto quit;
     }
+    //调用写函数
     if (0 != containerrfid_w_data(pdevice_rfid, pbuf[1], &pbuf[2], &pbuf[data_pos+1])){
         rsp                                 = RSP_EXEC_FAILURE;
         goto quit;
@@ -600,6 +611,7 @@ quit:
     return rsp;
 }
 
+//rfid阅读器读标签数据
 portBASE_TYPE CApplication::protocol_rfid_read(void)
 {
     CDevice_net     *pdevice_net           = m_app_runinfo.m_pdevice_net;
@@ -612,10 +624,12 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
     uint16          len, tot_len_index, tot_len, rfid_total_numb;
     int             rfid_device_online_no;
 
+    //获取在线的阅读器数量
     rfid_device_online_no                   = pdevice_rfid->rfid_device_online_no_get();
     //format  comm  frame
     //len init
     len                                     = 0;
+    //是否需要发送
     need_send                               = 0;
     //reader  numb
     buffer[len++]                           = rfid_device_online_no;
@@ -634,12 +648,16 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
         //rfid info:   rfid numbs,    epc,   data
         //total rfid numb
         rfid_total_numb                     = len++;
+        //sucess_cnts 存放读取到的标签个数
         sucess_cnts                         = 0;
+        //先获取所有的标签的epc信息
         if (0 == containerrfid_r_epc(pdevice_rfid)){
+            //再根据epc信息 获取对应标签的数据
             for (index = 0; index < m_app_runinfo.m_epcinfo.m_numb; index++){
 
                 if (0 == containerrfid_r_data(pdevice_rfid, index, &buffer[len], &len,
                         (m_app_runinfo.m_ability & TERMINAL_ABILITY_R_DATA)?(RECORD_INFO_DATA):(0))){
+                    //读取标签信息成功
                     sucess_cnts++;
                     need_send               = 1;
                 }
@@ -651,6 +669,7 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
         //write rfid total numb
         buffer[rfid_total_numb]             = sucess_cnts;
     }
+    //发送给后台
     if (1 == need_send){
         //caculate tot
         tot_len                             = len - tot_len;
@@ -659,12 +678,12 @@ portBASE_TYPE CApplication::protocol_rfid_read(void)
         pdevice_net->package_send_rfid((char *)buffer, len);
     }else {
         //可通过select等相关函数睡眠会
-//        msleep(50);
     }
 
     return 0;
 }
 
+//心跳包发送函数
 portBASE_TYPE CApplication::device_status_send(void)
 {
     CDevice_net     *pdevice_net            = m_app_runinfo.m_pdevice_net;
@@ -722,6 +741,7 @@ portBASE_TYPE CApplication::device_status_send(void)
     return 0;
 }
 
+//心跳定时器是否到期 检查函数
 bool CApplication::timer_timeout_occured(void)
 {
     uint64_t howmany;
@@ -738,6 +758,7 @@ bool CApplication::timer_timeout_occured(void)
     return true;
 }
 
+//通道电源设置函数
 portBASE_TYPE CApplication::readerrfid_channelpower_set(uint8 *pbuf, uint16 *plen)
 {
     CDevice_Rfid    *pdevice_rfid           = m_app_runinfo.m_pdevice_rfid;
@@ -764,11 +785,13 @@ portBASE_TYPE CApplication::readerrfid_channelpower_get(uint8 *pbuf, uint16 *ple
     return RSP_OK;
 }
 
+//网络包事件处理函数
 portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8 *pbuf, uint16 len)
 {
     CDevice_net *pdevice_net                    = m_app_runinfo.m_pdevice_net;
     uint8        rsp;
     uint8        fliter                         = 0;
+    //获取功能吗
     uint8        func_code                      = pframe_ctl->app_frm_ptr.fun;
 
     LOG_TRACE << "a net frame receievd, call CApplication::package_event_handler to handle; func_code = ["
@@ -850,6 +873,7 @@ portBASE_TYPE CApplication::package_event_handler(frame_ctl_t *pframe_ctl, uint8
     return 0;
 }
 
+//退出函数
 void CApplication::quit(void)
 {
     //遍历容器
@@ -860,6 +884,7 @@ void CApplication::quit(void)
     }
 }
 
+//运行函数
 portBASE_TYPE CApplication::run()
 {
     CDevice_net     *pdevice_net                    = m_app_runinfo.m_pdevice_net;
@@ -882,6 +907,7 @@ portBASE_TYPE CApplication::run()
 
         case enum_APP_STATUS_SEND_READERINFO:
         {
+            //发送阅读器信息给后台 若通道下没有挂接任何阅读器设置 则会一直调用readerrfid_init函数
             if (0 == readerrfid_init()){
                 m_app_runinfo.m_status      = enum_APP_STATUS_RUN;
             }
@@ -902,9 +928,12 @@ portBASE_TYPE CApplication::run()
             }else {
 
             }
+            //心跳定时器是否到期
             if (timer_timeout_occured()){
+                //发送心跳包
                 device_status_send();
             }
+            //处理网络事物
             pdevice_net->package_event_fetch();
             break;
 
@@ -913,6 +942,7 @@ portBASE_TYPE CApplication::run()
         }
         //判断父进程是否存在
         parent_pid                          = ::getppid();
+        //若父进程退出  则子进程自杀
         if ((parent_pid == 1) || (parent_pid != m_app_runinfo.ppid_)){
             LOG_WARN << "parent process exit, close channel power and send sigkill to myself";
             quit();
@@ -941,6 +971,7 @@ int main(int argc, char**argv)
 		LOG_SYSFATAL << "argc must = 2" << ::getpid();
 	}
     strcat(log_file_path, pbase_name);
+    //查找本进程可执行文件的绝对路径
 	stream                   = popen(log_file_path, "r" );
 	if (NULL == stream){
 		LOG_SYSFATAL << "popen failed!";
@@ -949,6 +980,7 @@ int main(int argc, char**argv)
 	fread(log_file_path, sizeof(char), sizeof(log_file_path),  stream);
 	pclose(stream);
 
+	//拼接本进程的log文件路径
 	ptmp                      = strrchr(log_file_path, '/');
 	strcpy(ptmp, "/../log/");
 	strcat(log_file_path, pbase_name);

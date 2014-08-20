@@ -26,20 +26,25 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
     struct validate_aframe_info     t_validate_aframe_info;
     char   log_msg_head[100];
 
-    //通道信息
+    //通道信息  iflag!=0 代表错误数据帧
     if(iflag != 0) {
         process_aframe(pdata, len, iflag);
 
         return true;
     }
+    //拼接日志信息
     strcpy(log_msg_head, pchannel_->io_node_name_get());
     strcat(log_msg_head, "-> protocol::read_frchannel");
 
+    //将接收到的数据 追加到inbuffer中
     inbuffer_.append(pdata, len);
+    //循环处理inbuffer中的数据
     while (inbuffer_.readableBytes()){
         int         packlen;
         int         rt;
+        //获取数据首地址
         const char  *paddr        = inbuffer_.peek();
+        //获取数据数量
         int         no             = inbuffer_.readableBytes();
 
         utils::log_binary_buf(log_msg_head, paddr, no);
@@ -56,7 +61,6 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         //计算帧实际长度
         packlen                                             -= t_validate_aframe_info.pdata_-paddr;
 
-        //打印帧
         //帧尚未接收完全
         if (rt == 0){
             break;
@@ -64,6 +68,7 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         }else if (rt < 0){
             //让应用软件处理错误帧
             process_aframe(paddr, packlen, rt);
+            //将错误帧数据从inbuffer中去除
             inbuffer_.retrieve(packlen);
             runinfo_.m_nErrorPack++;
             continue;
@@ -71,7 +76,9 @@ bool protocol::read_frchannel(const char *pdata, int len, int iflag)
         }else {
             runinfo_.m_nRcvPackTotal++;
         }
+        //处理帧数据
         process_aframe(paddr, packlen, iflag);
+        //将帧数据从inbuffer中去除
         inbuffer_.retrieve(packlen);
     }
 
@@ -97,10 +104,12 @@ int protocol::write_tochannel(const char *pdata, int len)
     if (enum_WORK_TYPE_HALF_DUPLEX == pchannel_->duplextype_get()){
         inbuffer_.retrieveAll();
     }
+    //将地址为pdata 长度为len的数据 进行协议打包   打包后的数据存入outbuffer中
     package_aframe(const_cast<char *>(pdata), len);
     return pchannel_->on_write(outbuffer_.peek(), outbuffer_.readableBytes());
 }
 
+//帧数据打包
 int  protocol::package_aframe(char* pdata, int len)
 {
     LOG_TRACE;
@@ -108,17 +117,20 @@ int  protocol::package_aframe(char* pdata, int len)
     return 0;
 }
 
+//验证一帧是否完整
 int  protocol::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
 
     return 0;
 }
 
+//未使用
 bool protocol::handle_timer(void)
 {
     return true;
 }
 
+//协议创建
 protocol *protocol::protocol_create(const char *name)
 {
     protocol *pprotocol = NULL;

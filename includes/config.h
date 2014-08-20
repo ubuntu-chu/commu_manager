@@ -90,15 +90,16 @@ public:
 	}
 
 private:
-	char   			            describe_[def_DESCRIBE_MAX_LEN];
-	char                       log_level_;
-	int                         heartbeat_s_;
-	led_config 				    led_;
-	power_config 				power_;
-	process_config 				process_;
-	protocol_config 			protocol_;
-	io_config 					io_;
-	device_config 				device_;
+	char   			            describe_[def_DESCRIBE_MAX_LEN];   //描述
+	char                       log_level_;                         //日志等级
+	int                         heartbeat_s_;                      //心跳时间
+	//工程中 对所有配置信息组织方式完全一直  其注释可 查看power_node.h即可
+	led_config 				    led_;                               //led配置信息
+	power_config 				power_;                             //电源控制配置信息
+	process_config 				process_;                           //进程配置信息
+	protocol_config 			protocol_;                          //协议配置信息
+	io_config 					io_;                                //io配置信息
+	device_config 				device_;                            //设置配置信息
 };
 
 

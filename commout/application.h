@@ -4,13 +4,19 @@
 #include <includes/includes.h>
 #include "rfid.h"
 
+//阅读器能力:读取EPC
 #define         TERMINAL_ABILITY_NONE               (0x00)
+//阅读器能力:读取EPC+DATA
 #define         TERMINAL_ABILITY_R_DATA             (0x01)
+//阅读器能力:写DATA
 #define         TERMINAL_ABILITY_W_DATA             (0x02)
+//阅读器能力:未使用
 #define         TERMINAL_ABILITY_W_EPC              (0x04)
 
 enum{
+    //主动模式
     MODE_INITIATIVE     = 0,
+    //被动模式
     MODE_PASSIVITY,
 };
 
@@ -19,7 +25,7 @@ struct app_rfidinfo{
     //fix 12bytes
     uint8               m_epcarray[12];
     //fixed start  0xfe
-    uint8               m_initseq_hi;
+    uint8               m_initseq_hi;           //从此向下为数据区：总共12个字节  如何使用取决与应用程序
     //0xef
     uint8               m_initseq_low;
     //attr
@@ -47,11 +53,11 @@ enum {
 };
 
 struct _app_runinfo_{
-    CDevice_Rfid                        *m_pdevice_rfid;
-    CDevice_net                         *m_pdevice_net;
+    CDevice_Rfid                        *m_pdevice_rfid;                //rfid设备指针
+    CDevice_net                         *m_pdevice_net;                 //net设置指针
 
-    int                                 timer_fd_;
-    pid_t                               ppid_;
+    int                                 timer_fd_;                      //心跳定时器设备fd
+    pid_t                               ppid_;                          //父进程pid
 
     struct epc_info                     m_epcinfo;
     struct app_rfidinfo                 m_rfidinfo;
@@ -60,7 +66,7 @@ struct _app_runinfo_{
     volatile sig_atomic_t              m_status;
     uint8                               m_reader_numbs;    //通道下所挂接设备数量
 
-    boost::ptr_vector<channel>          channel_vector_;
+    boost::ptr_vector<channel>          channel_vector_;                //通道容器
 
 };
 typedef struct _app_runinfo_ app_runinfo_t;

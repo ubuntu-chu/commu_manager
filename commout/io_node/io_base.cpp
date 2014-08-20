@@ -41,10 +41,11 @@ int io_base::send_package(char *pdata, size_t len)
             pio_node_->name_get(), "io_base::send_package");
     utils::log_binary_buf(log_buf, pdata, len);
 
+    //调用send_data来完成具体的发送数据工作
     return send_data(pdata, len);
 }
 
-//向通道写报文
+//向通道写报文   虚函数  需要继承类进行重载
 int io_base::send_data(char *pdata, size_t len)
 {
     return 0;
@@ -59,6 +60,7 @@ bool io_base::on_read(const char *pdata, int len, int flag)
             pio_node_->name_get(), "io_base::on_read");
     utils::log_binary_buf(log_buf, pdata, len);
     if (NULL != pchannel_){
+        //判断通道当前能否接收
         if (false == pchannel_->can_receive()){
             LOG_WARN << "drop data because half duplex in send";
             return false;
@@ -73,6 +75,7 @@ void io_base::send_status_end(int len)
     if (NULL != pchannel_){
         pchannel_->send_status_set(false);
     }
+    //实际发送的数据个数 与 应该发送的数据个数 不相等
     if (len != len_){
         LOG_WARN << pio_node_->name_get() << " io_base::" << __func__
                 << " send failed!; expected [" << len_ << "] actual ["
@@ -80,11 +83,12 @@ void io_base::send_status_end(int len)
     }
 }
 
-
+//电源控制
 bool io_base::power_ctrl(char value)
 {
     bool rt;
 
+    //只有IO_TYPE_EXT_COM类型的io_node 才可进行电源控制
     if (IO_TYPE_EXT_COM != pio_node_->io_type_get()){
         return false;
     }
@@ -94,6 +98,7 @@ bool io_base::power_ctrl(char value)
     if (false == rt){
         const char *msg[]     = {" power_off", " power_on"};
 
+        //电源控制失败， 记录下失败信息
         LOG_WARN << pio_node_->name_get() << " io_base::" << __func__ << msg[value - '0'] << " failed!";
     }
 

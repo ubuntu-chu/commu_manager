@@ -201,6 +201,7 @@ quit:
     return rt;
 }
 
+//未使用
 bool protocol_mac::handle_timer(void)
 {
     LOG_DEBUG;
@@ -211,6 +212,7 @@ void protocol_mac::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, u
 {
     io_base *pio_base           = pchannel_->io_base_get();
     io_node *pio_node           = pio_base->io_node_get();
+    //查找本io_node关联的io_node 即io_channel_x
     io_node *pio_node_map       = pio_node->io_node_map_get();
 
     io_com_ext_node *pio_com_ext_node =
@@ -221,6 +223,7 @@ void protocol_mac::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, u
     //同一个io下所有设备的class type必须相同
     list_head_t * plist_head  = pio_com_ext_node->device_list_head_get();
 
+    //获取设备结点结构体指针
     pdevice_node    = list_entry_offset(plist_head->m_next, class device_node, device_node::node_offset_get());
 
     memset(pfrm_ctl, 0, sizeof(frame_ctl_t));
@@ -229,12 +232,13 @@ void protocol_mac::frm_ctl_init(frame_ctl_t *pfrm_ctl, mac_frm_ctrl_t frm_ctl, u
     pfrm_ctl->mac_frm_ptr.seq_id = seq_id_get();
 
     pfrm_ctl->mac_frm_ptr.ctl       = frm_ctl;
-
+    //系统当前时间
     pfrm_ctl->mac_frm_ptr.time = time(NULL);
-
+    //设备地址
     pfrm_ctl->mac_frm_ptr.dev_adr = pio_com_ext_node->device_addr_get();
+    //传感器地址
     pfrm_ctl->mac_frm_ptr.sen_adr = pio_com_ext_node->sensor_addr_get();
-
+    //设备类  type
     pfrm_ctl->mac_frm_ptr.type  = pdevice_node->class_type_get();
     pfrm_ctl->app_frm_ptr.fun   = func_code;
 

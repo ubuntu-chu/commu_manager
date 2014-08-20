@@ -3,6 +3,7 @@
 
 namespace utils{
 
+//将pbuf中的数据格式化到pdst_buf中
 void format_binary_buf(char *pdst_buf, int dst_buf_len, const char *pbuf, int len)
 {
     int i;
@@ -59,6 +60,7 @@ void print_errno_msg(const char *pmsg)
     errno                               = errno_cpy;
 }
 
+//信号处理函数安装
 int signal_handler_install(int signum, void (*handler)(int,siginfo_t*,void*))
 {
     struct sigaction act;

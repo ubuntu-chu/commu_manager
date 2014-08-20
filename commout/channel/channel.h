@@ -40,13 +40,14 @@ public:
     bool            m_bStatus;             //通信是否正常
     bool            m_bConnected;           //是否连接（面向连接的通道有效）
     bool            m_bsend;                //发送状态
-    int             m_nRcvByteTotal;        //接受数据包累计
-    int             m_nSndByteTotal;        //发送数据包累计
-    int             m_nRcvByteAverage;      //每秒接受数据包
-    int             m_nSndByteAverage;      //每秒发送数据包
+    int             m_nRcvByteTotal;        //接受数据包累计  未使用
+    int             m_nSndByteTotal;        //发送数据包累计  未使用
+    int             m_nRcvByteAverage;      //每秒接受数据包  未使用
+    int             m_nSndByteAverage;      //每秒发送数据包  未使用
 };
 
 
+//未使用
 class channel_worktype {
 public:
     bool            m_bAutoSwitch;  //面向连接的通道断开是否自动切换
@@ -130,6 +131,7 @@ public:
     }
     bool can_receive(void)
     {
+        //半双工 且 正在发送时  不允许接收
         if ((enum_WORK_TYPE_HALF_DUPLEX == duplex_type_)
                 && (true == runinfo_.m_bsend)){
             return false;
@@ -180,7 +182,7 @@ private:
         return io_base_->power_ctrl(value);
 	}
 
-    channel_runinfo         runinfo_;
+    channel_runinfo         runinfo_;                       //通道运行信息  里面的大部分变量都未使用
     int                     duplex_type_;
     int                     power_statue_;
 
@@ -190,13 +192,13 @@ private:
     boost::shared_ptr<EventLoopThread> event_loopthread_;
     EventLoop               *event_loop_;
 
-    mutable MutexLock      mutex_;
-    Condition               condition_;
-    int                     status_;
-    sig_atomic_t            frame_arrived_;
-    sig_atomic_t            frame_flag_;
+    mutable MutexLock      mutex_;                          //互斥量
+    Condition               condition_;                     //条件变量
+    int                     status_;                        //完成状态
+    sig_atomic_t            frame_arrived_;                 //帧数据到达
+    sig_atomic_t            frame_flag_;                    //帧标志
     sig_atomic_t            write_sync_inloop_called_;
-    vector<char>            vec_ret_;
+    vector<char>            vec_ret_;                       //存放接收到的帧数据
 };
 
 #endif

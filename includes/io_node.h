@@ -5,16 +5,22 @@
 #include "power_node.h"
 
 enum {
+    //半双工
     enum_WORK_TYPE_HALF_DUPLEX  = 0,
+    //全双工
     enum_WORK_TYPE_DUPLEX,
 
 };
 //io类型定义
 enum{
     IO_TYPE_BEGIN       = 0,
+    //对上的tcp客户端
     IO_TYPE_EXT_CLIENT  = IO_TYPE_BEGIN,
+    //未使用
     IO_TYPE_INNER_CLIENT,
+    //未使用
     IO_TYPE_INNER_SERVER,
+    //对下的com类型
     IO_TYPE_EXT_COM,
     IO_TYPE_END,
 };
@@ -26,6 +32,7 @@ static const char *io_type_str_array[IO_TYPE_END] = {
     "down_rs485",
 };
 
+//io_node节点类型 个数定义
 static const char io_node_no[IO_TYPE_END] = {
      def_IO_TCP_SERVER_NODE_NO,
      def_IO_TCP_CLIENT_NODE_NO,
@@ -56,6 +63,7 @@ public:
 	void map_set(const char *map){strncpy(map_, map, sizeof(map_));}
 	const char *map_get(void){return map_;}
 
+	//此io_node节点所关联的其他io_node结点
 	void io_node_map_set(io_node *pnode){pio_node_map_ = pnode;}
 	io_node *io_node_map_get(void){return pio_node_map_;}
 
@@ -63,6 +71,7 @@ public:
     {
         int     type    = io_type_get(type_);
 
+        //IO_TYPE_EXT_COM 为485总线 所以为单双工的
         if (type == IO_TYPE_EXT_COM){
             return enum_WORK_TYPE_HALF_DUPLEX;
         }
@@ -70,7 +79,7 @@ public:
         return enum_WORK_TYPE_DUPLEX;
     }
 
-
+    //由io_node的type值， 得到类型索引
     static int io_type_get(const char *type_str)
     {
         int     i                  = IO_TYPE_BEGIN;
@@ -98,6 +107,7 @@ public:
         return true;
     }
 
+    //此io_node结点下所挂载的设备链表头
     list_head_t * device_list_head_get(void)
     {
         return &device_head_;
@@ -111,10 +121,11 @@ private:
 	char   			map_[def_NAME_MAX_LEN];//映射资源
 
 	int             io_type_;
-	list_head_t     device_head_;
-	io_node         *pio_node_map_;
+	list_head_t     device_head_;                       //此io_node结点下所挂载的设备链表头
+	io_node         *pio_node_map_;                     //此io_node所关联的io_node节点指针
 };
 
+//tcp_server节点
 class io_tcp_server_node:public io_node{
 public:
 	io_tcp_server_node(){}
@@ -130,6 +141,7 @@ private:
 	int 			server_port_;
 };
 
+//tcp 客户端
 class io_tcp_client_node:public io_tcp_server_node{
 public:
 	io_tcp_client_node(){}
@@ -141,14 +153,14 @@ private:
 	char   			client_ip_[def_NAME_MAX_LEN];
 };
 
-//对外通讯tcp cient定义
+//对外通讯tcp cient定义  即对上通讯
 class io_tcp_ext_client_node:public io_tcp_client_node{
 public:
 	io_tcp_ext_client_node(){}
 	~io_tcp_ext_client_node(){}
 };
 
-
+//com基类
 class io_com_node:public io_node{
 public:
 	io_com_node(){}
@@ -160,7 +172,7 @@ public:
 	void power_group_set(const char *power_group){strncpy(power_group_, power_group, sizeof(power_group_));}
 	const char * power_group_get(void){return power_group_;}
 
-
+	//电源控制部分
 	void power_node_set(power_node *power_node){power_node_ = power_node;}
 	power_node * power_node_get(void){return power_node_;}
 
@@ -223,21 +235,25 @@ public:
 		return 0;
 	}
 
+	//实际应用中  未使用
     int send_interval_set(int send_interval)
     {
         send_interval_ = send_interval;
         return 0;
     }
+	//实际应用中  未使用
     int send_retry_cnt_set(int send_retry_cnt)
     {
         send_retry_cnt_ = send_retry_cnt;
         return 0;
     }
+	//实际应用中  未使用
     int recv_timeout_set(int recv_timeout)
     {
         recv_timeout_ = recv_timeout;
         return 0;
     }
+	//实际应用中  未使用
 	int send_recv_param_get(int &send_interval, int &send_retry_cnt, int &recv_timeout)
 	{
 		send_interval 				= send_interval_;
@@ -264,12 +280,13 @@ private:
 #define 	def_SENSOR_ADDR_CHAR_NO 			(4)
 #define    C2N(c)                              ((c) - '0')
 #define    N2C(n)                              ((n) + '0')
-
+//对下通讯的 com节点
 class io_com_ext_node:public io_com_node{
 public:
 	io_com_ext_node(){}
 	~io_com_ext_node(){}
 
+	//设备地址设定
     int device_addr_set(const char *device_addr)
     {
         int     value;
@@ -286,6 +303,7 @@ public:
     }
     int device_addr_no_get(void){return sizeof(device_addr_);}
 
+    //传感器地址设置
     int sensor_addr_set(const char *sensor_addr)
     {
         int     value;
@@ -306,6 +324,7 @@ private:
 	uint32 			sensor_addr_;
 };
 
+//io节点配置结构体
 class io_config{
 public:
     io_config()
@@ -317,6 +336,7 @@ public:
     void describe_set(const char *describe){strncpy(describe_, describe, sizeof(describe_));}
 	const char *describe_get(void){return describe_;}
 
+	//依据io_node的type 将io_node添加到对应的io_node容器中
     int io_add(int type, const class io_node *pnode)
     {
         io_node *pnode_base  = NULL;
@@ -353,6 +373,7 @@ public:
 
         return 0;
     }
+	//依据io_node的type和容器内的索引 获取io_node指针
     io_node *io_vector_get(int type, int index = 0)
     {
         io_node *pnode  = NULL;
@@ -388,10 +409,11 @@ public:
         return index_[type]++;
     }
 
-
+    //用于遍历整个io_type节点
     int io_type_start(void){return IO_TYPE_BEGIN;}
     int io_type_end(void){return IO_TYPE_END;}
 
+    //依据name在io_type容器中查找io_node节点
     io_node *io_node_find(const char *name)
     {
         int         i, j, io_vector_no;

@@ -6,7 +6,8 @@
 using muduo::net::Buffer;
 
 class channel;
-//通信基类
+//io基类  io基类一定会关联一个channel 和 一个io_node_
+//io完成具体的发送、接收操作   把接收到的数据传递给channel   把channel传递过来的数据发送出去
 class io_base{
 public:
     io_base(io_node *pio_node):connected_(false), pio_node_(pio_node){}
@@ -47,8 +48,10 @@ public:
         return pio_node_->duplextype_get();
     }
 
+    //此函数在发送结束后调用
     void send_status_end(int len);
 
+    //电源控制
     bool power_on(void)
     {
         return power_ctrl('1');
@@ -65,8 +68,8 @@ public:
     }
 protected:
 
-    int                 m_nLastSend; //最近周期内发送的报文字节数
-    int                 m_nLastRcv;  //最近周期内收到的报文字节数
+    int                 m_nLastSend; //最近周期内发送的报文字节数  未使用
+    int                 m_nLastRcv;  //最近周期内收到的报文字节数  未使用
     int                 len_;
 
     bool                connected_;

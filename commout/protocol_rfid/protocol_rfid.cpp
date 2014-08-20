@@ -77,6 +77,7 @@ bool protocol_rfid::process_aframe(const char * pdata, int len, int iflag)
 //备    注:
 ////////////////////////////////////////////////////////////////////////////////
 
+//这部分的内容 请参考厂家的通讯协议
 int  protocol_rfid::validate_aframe(struct validate_aframe_info *pinfo, int& ipacklen)
 {
     //check frame valid
@@ -128,6 +129,7 @@ quit:
     return rt;
 }
 
+//未使用
 bool protocol_rfid::handle_timer(void)
 {
     LOG_DEBUG;

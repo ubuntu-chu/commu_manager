@@ -16,6 +16,7 @@ public:
     virtual bool connect(bool brelink = true)
     {
         LOG_TRACE;
+        //客户端调用链接函数
         client_.connect();
         return true;
     }
@@ -33,6 +34,7 @@ public:
     {
         int actual_len              = 0;
         MutexLockGuard lock(mutex_);
+        //若tcp链接存在时 调用send发送数据
         if (connection_){
           connection_->send(pdata, len);
           actual_len                = len;
@@ -46,10 +48,10 @@ private:
     void onConnection(const TcpConnectionPtr& conn);
     void onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp receiveTime);
 
-    EventLoop* loop_;
-    TcpClient client_;
-    TcpConnectionPtr connection_;
-    MutexLock mutex_;
+    EventLoop* loop_;                           //事件循环指针
+    TcpClient client_;                          //tcp 客户端结构体
+    TcpConnectionPtr connection_;               //tcp 连接指针
+    MutexLock mutex_;                           //互斥锁
 
 };
 

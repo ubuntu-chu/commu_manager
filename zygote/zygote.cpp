@@ -4,6 +4,7 @@
 #include <utils.h>
 #include <sys/wait.h>
 
+//def_DBG_IN_PC_SINGLE宏 当在pc端调试时，此宏的值定义为1  嵌入式版本时 定义为0
 #define     def_DBG_IN_PC_SINGLE        (0)
 
 #if (def_DBG_IN_PC_SINGLE > 0)
@@ -17,6 +18,7 @@ boost::scoped_ptr<muduo::LogFile> g_logFile;
 
 void outputFunc(const char* msg, int len)
 {
+    //追加到日志文件后面
     g_logFile->append(msg, len);
     //因为在使用文件作为日志时  写入的数据存放在fp所自带的缓冲区中 并没有真正的写入文件 所以执行
     //flush强制进行写入
@@ -79,6 +81,7 @@ void sig_handler_chld(int signum, siginfo_t *info, void *ptr)
 	g_sig_chld_                             = 1;
 }
 
+//段错误处理函数
 void sig_handler_segv(int signum, siginfo_t *info, void *ptr)
 {
     /* 动态链接库的映射地址是动态的，需要将maps文件打印出来 */
@@ -172,7 +175,7 @@ zygote *zygote::GetInstance(void)
     return (m_pzygote);
 }
 
-
+//系统初始化函数
 portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_path)
 {
 	std::string      process_name_str;
@@ -202,21 +205,25 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     g_logFile.reset(new muduo::LogFile(log_file_path, 10 * 1000 * 1000));
     muduo::Logger::setOutput(outputFunc);
     muduo::Logger::setFlush(flushFunc);
-    //获取进程状态结构体数组指针
+
+    //获取进程状态结构体数组指针 创建进程间共享内存
     if (t_project_datum.shmem_.create()){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
 		return -1;
     }
+    //将共享内存映射到本进程的地址空间中
     t_project_datum.pprocess_stat_          = reinterpret_cast<struct process_stat   *>(t_project_datum.shmem_.attach());
     LOG_INFO << "t_project_datum.pprocess_stat_ = " << reinterpret_cast<int *>(t_project_datum.pprocess_stat_);
 
 	LOG_INFO << "parse project xml config file: " << config_file_path;
+	//解析配置文件
 	if (xml_parse(config_file_path, &t_project_datum.project_config_)){
         m_app_runinfo.m_status                  = enum_APP_STATUS_INIT_ERR;
 		LOG_ERROR << "project xml config file parse failed!";
 
 		return -1;
 	}
+	//设置日志级别
     Logger::setLogLevel(static_cast<muduo::Logger::LogLevel>(t_project_datum.project_config_.log_lev_get()));
     LOG_INFO << "subprocess heartbeat sec = " << t_project_datum.project_config_.heartbeat_s_get();
 
@@ -226,6 +233,7 @@ portBASE_TYPE zygote::init(const char *log_file_path, const char *config_file_pa
     return 0;
 }
 
+//进程退出原因分析
 void zygote::exit_code_analyze(pid_t pid, int status)
 {
     if (-1 == pid){
@@ -242,6 +250,7 @@ void zygote::exit_code_analyze(pid_t pid, int status)
     }
 }
 
+//创建子进程执行程序
 pid_t zygote::_fork_subproc(const char *path, char *const argv[])
 {
     pid_t pid;
@@ -265,6 +274,7 @@ pid_t zygote::_fork_subproc(const char *path, char *const argv[])
         rt                                  = execvp(path, argv);
 #endif
         if (rt < 0) {
+            //exec函数族执行出错
             LOG_ERROR << "execv rt:[" << rt << "] errno:["<< errno
                     << "] error msg:<" << strerror(errno) << ">";
             utils::print_errno_msg("zygote::_fork_subproc->execvp");
@@ -272,6 +282,7 @@ pid_t zygote::_fork_subproc(const char *path, char *const argv[])
         exit(1);
     }
 
+    //返回子进程pid
     return pid;
 }
 
@@ -281,7 +292,7 @@ pid_t zygote::fork_subproc(process_node *pprocess_node)
     struct process_stat   *pprocess_stat   = NULL;
     int         index                   = pprocess_node->index_get();
 
-    //初始化进程通讯状态
+    //初始化进程通讯状态为失败状态
     pprocess_stat                       = process_stat_ptr_get(index);
     pprocess_stat->comm_stat            = def_PROCESS_COMM_FAILED;
     m_app_runinfo.subprocess_comm_stat_[index]  = def_PROCESS_COMM_FAILED;
@@ -291,7 +302,7 @@ pid_t zygote::fork_subproc(process_node *pprocess_node)
     return _fork_subproc(child_argv[0], (char **)child_argv);
 }
 
-
+//统计子进程的通讯状态 并将状态信息记录到log文件中
 void zygote::comm_status_statistics(void)
 {
     bool            comm_stat               = false;
@@ -299,18 +310,21 @@ void zygote::comm_status_statistics(void)
 	project_config	*pproject_config        = &t_project_datum.project_config_;
 	process_config  &process_conf	        = pproject_config->process_config_get();
 	process_node    *pprocess_node;
+	//子进程容器数量
 	int             process_vector_no       = process_conf.process_vector_no_get();
     struct process_stat   *pprocess_stat   = NULL;
 	int             i, index;
 
-    //统计子进程的通讯状态
+    //统计子进程的通讯状态 循环处理所有子进程
     for (i = 0; i < process_vector_no; i++){
         pprocess_node                       = process_conf.process_node_get(i);
 
+        //判断子进程的 exist属性值
         if (false == pprocess_node->is_existed()){
             continue;
         }
         index                                      = pprocess_node->index_get();
+        //获取子进程的状态结构体指针   状态结构体是一个数组
         pprocess_stat                              = process_stat_ptr_get(index);
         LOG_TRACE << "name:[" << pprocess_node->name_get()
                 << "] path:<" << pprocess_node->file_path_get() << "> comm_stat = "
@@ -326,11 +340,13 @@ void zygote::comm_status_statistics(void)
             should_log                             = true;
         }
     }
+    //m_app_runinfo.should_log_ 在进程启动时 被赋值为true
     if (m_app_runinfo.should_log_ == true){
         m_app_runinfo.should_log_                  = false;
         should_log                                 = true;
     }
     if (should_log == true){
+        //记录所有子进程状态信息到日志文件中
         utils::log_binary_buf("subprocess comm stat array: ",
                 &(*m_app_runinfo.subprocess_comm_stat_.begin()), process_vector_no);
     }
@@ -343,6 +359,7 @@ void zygote::comm_status_statistics(void)
     }
 }
 
+//处理子进程退出  子进程推出后 需要重启此子进程
 void zygote::sig_chld_handle(void)
 {
     pid_t           pid;
@@ -354,6 +371,7 @@ void zygote::sig_chld_handle(void)
         //分析进程退出原因
         exit_code_analyze(pid, status);
         it                                      = m_app_runinfo.map_pid_.find(pid);
+        //没找到退出的子进程pid
         if(it == m_app_runinfo.map_pid_.end()){
             LOG_ERROR << "an unknown sub process exit!";
             continue;
@@ -361,13 +379,12 @@ void zygote::sig_chld_handle(void)
             pprocess_node                       = it->second;
             LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
                     << "] path:<" << pprocess_node->file_path_get() << ">";
-    #if 1
+            //重启退出的子进程
             pid                                 = fork_subproc(pprocess_node);
             //将此条目删除  已经无用
             m_app_runinfo.map_pid_.erase(it);
             //添加新条目到map中
             m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
-    #endif
         }
     }
     if (pid < 0){
@@ -375,6 +392,7 @@ void zygote::sig_chld_handle(void)
     }
 }
 
+//从配置文件里创建子进程
 int  zygote::fork_subproc_from_config(void)
 {
 	project_config	*pproject_config            = &t_project_datum.project_config_;
@@ -385,11 +403,12 @@ int  zygote::fork_subproc_from_config(void)
     pid_t           pid;
 
 	m_app_runinfo.map_pid_.clear();
+	//没有子进程需要创建
     if (0 == process_vector_no){
         LOG_ERROR << "project xml config file error! none process want to fork to exec";
         return -1;
     }else {
-        //创建子进程通讯状态数组
+        //创建子进程通讯状态数组   需要创建的子进程个数为process_vector_no
         m_app_runinfo.subprocess_comm_stat_.reserve(process_vector_no);
         //依据配置文件创建进程
         for (i = 0; i < process_vector_no; i++){
@@ -397,12 +416,14 @@ int  zygote::fork_subproc_from_config(void)
             index                               = pprocess_node->index_get();
 
             //要对配置的合法性进行判断
+            //进程索引不对  则停止创建过程  一定不要改动配置文件中的进程索引
             if (index != i){
                 //杀死已经创建的进程
                 g_sig_quit_                     = 1;
                 LOG_ERROR << "process[" << pprocess_node->name_get()
                         << "] index(" << index << ") != "<< i;
                 return -1;
+            //进程索引范围不正确
             }else if (index > process_vector_no){
                 //杀死已经创建的进程
                 g_sig_quit_                     = 1;
@@ -410,16 +431,19 @@ int  zygote::fork_subproc_from_config(void)
                         << "] index(" << index << ") > process numb(" << process_vector_no << ")";
                 return -1;
             }
-            //写入默认值
+            //子进程通讯状态 初始化默认值
             m_app_runinfo.subprocess_comm_stat_[index]
                                                 = def_PROCESS_COMM_FAILED;
+            //判断进程是否存在  即配置文件中的exist属性值
             if (false == pprocess_node->is_existed()){
                 continue;
             }
+            //创建子进程运行
             pid                                 = fork_subproc(pprocess_node);
 
             LOG_INFO << "fork to exec subprocess name:[" << pprocess_node->name_get()
                     << "] path:<" << pprocess_node->file_path_get() << ">";
+            //将子进程pid和相应的process_node* 插入到map_pid_映射中
             m_app_runinfo.map_pid_.insert(pair<pid_t, process_node*>(pid, pprocess_node));
         }
     }
@@ -435,17 +459,19 @@ portBASE_TYPE zygote::run()
 
     while(m_app_runinfo.m_status != enum_APP_STATUS_EXIT){
         switch (m_app_runinfo.m_status){
-        //初始化错误  进程不做任何事情 只是检查父进程是否退出
         case enum_APP_STATUS_INIT_ERR:
 
+            //初始化错误  杀死自己
             ::raise (SIGKILL);
             break;
 
         case enum_APP_STATUS_INIT:
 
             if (0 == fork_subproc_from_config()){
+                //创建子进程成功 系统进入enum_APP_STATUS_RUN状态
                 m_app_runinfo.m_status       = enum_APP_STATUS_RUN;
             }else{
+                //创建子进程失败
                 m_app_runinfo.m_status       = enum_APP_STATUS_RUN_NO_SUBPROC;
             }
             break;
@@ -458,6 +484,7 @@ portBASE_TYPE zygote::run()
 
         case enum_APP_STATUS_RUN:
         {
+            //睡眠1s
             rt                                  = ::nanosleep(&ts, NULL);
             if ((rt == -1) && (errno == EINTR)){
                 LOG_INFO << "a signal occured, process it";
@@ -475,6 +502,7 @@ portBASE_TYPE zygote::run()
             LOG_INFO << "SIGCHLD deliver, call sig_chld_handle() to process it";
             sig_chld_handle();
         }
+        //处理本进程退出事件
         if (1 == g_sig_quit_){
             g_sig_quit_                     = 0;
             LOG_INFO << "SIG[" << g_sig_ << "] deliver, call quit() to process it";
@@ -498,18 +526,23 @@ void zygote::channels_power_off(void)
     }
 }
 
+//退出函数
 void zygote::quit(void)
 {
     map<pid_t, process_node *>::iterator it;
     pid_t           pid;
 
+    //杀死本进程创建的所有子进程
 	for (it = m_app_runinfo.map_pid_.begin(); it != m_app_runinfo.map_pid_.end(); ++it){
 	    pid                                 = it->first;
         LOG_INFO << "send SIGKILL to subprocess; pid = [" << pid << "]";
+        //发送sigkill信号到子进程
 	    ::kill(pid, SIGKILL);
 	}
     m_app_runinfo.m_status                  = enum_APP_STATUS_EXIT;
+    //关闭所有通道电源
     channels_power_off();
+    //关闭run和alarm指示灯
     run_led_off();
     alarm_led_off();
 }
@@ -532,14 +565,18 @@ int main(int argc, char**argv)
 	strcat(log_file_path, pbase_name);
 #else
 	strcat(log_file_path, pbase_name);
+	//获取进程位置的绝对路径  使用popen函数
 	stream                                  = popen(log_file_path, "r" );
 	if (NULL == stream){
 		LOG_SYSFATAL << "popen failed!";
 	}
 	memset(log_file_path, '\0', sizeof(log_file_path));
+	//从流中读取which命令的返回值到log_file_path中
 	fread(log_file_path, sizeof(char), sizeof(log_file_path),  stream);
+	//关闭流
 	pclose(stream);
 
+	//获取log文件的存放路径
 	strcpy(config_file_path, log_file_path);
 	ptmp                                    = strrchr(log_file_path, '/');
 	strcpy(ptmp, "/../log/");
@@ -564,6 +601,7 @@ int main(int argc, char**argv)
 	strcat(log_file_path, pbase_name);
 
 	ptmp                                    = strrchr(config_file_path, '/');
+	//获取config.xml文件绝对路径
 	strcpy(ptmp, "/../config/config.xml");
 #endif
 
